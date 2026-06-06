@@ -7,11 +7,20 @@ struct DashboardView: View {
     @Query(sort: \RiskAssessment.timestamp, order: .reverse) private var assessments: [RiskAssessment]
     @Query private var profiles: [UserProfile]
 
-    @State private var viewModel = DashboardViewModel()
+    @State private var viewModel: DashboardViewModel
     @State private var showResults = false
+    @State private var selectedDomain: HealthDomain?
+
+    init() {
+        _viewModel = State(initialValue: DashboardViewModel())
+    }
 
     private var profile: AbstractedRiskProfile {
         viewModel.latestAssessment?.abstractedProfile ?? .placeholder
+    }
+
+    private var summaryText: String? {
+        viewModel.latestSummary?.markdownSummary ?? viewModel.latestAssessment?.aiSummaryText
     }
 
     var body: some View {
@@ -26,7 +35,9 @@ struct DashboardView: View {
             .background(NHSTheme.background)
             .navigationTitle("Dashboard")
             .onAppear {
+                viewModel = DashboardViewModel(healthDataProvider: dependencies.healthDataProvider)
                 viewModel.loadLatest(from: assessments)
+                Task { await viewModel.refreshHealthKit() }
             }
             .onChange(of: assessments.count) {
                 viewModel.loadLatest(from: assessments)
@@ -43,41 +54,52 @@ struct DashboardView: View {
                     )
                 }
             }
+            .sheet(item: $selectedDomain) { domain in
+                DomainDetailView(domain: domain, profile: profile)
+            }
         }
     }
 
     private var dashboardContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
+                PersonalizedSummaryCard(
+                    quote: viewModel.motivationalQuote,
+                    summaryText: summaryText,
+                    tips: viewModel.selectedTips,
+                    completedTipIDs: viewModel.completedTipIDs,
+                    onToggleTip: { viewModel.toggleTipCompletion($0) }
+                )
 
                 DomainStatusCard(
                     title: "Cardiovascular",
                     subtitle: "Heart & circulation risk",
-                    status: profile.cardioRisk.displayName,
                     color: NHSTheme.riskColor(for: profile.cardioRisk),
-                    icon: "heart.fill"
+                    icon: "heart.fill",
+                    action: { selectedDomain = .cardiovascular }
                 )
 
                 DomainStatusCard(
                     title: "Mental Health",
                     subtitle: "Mood & anxiety indicators",
-                    status: profile.mentalHealth.displayName,
                     color: NHSTheme.mentalColor(for: profile.mentalHealth),
-                    icon: "brain.head.profile"
+                    icon: "brain.head.profile",
+                    action: { selectedDomain = .mental }
                 )
 
                 DomainStatusCard(
                     title: "Metabolic",
                     subtitle: "Diabetes & weight risk",
-                    status: profile.metabolic.displayName,
                     color: NHSTheme.riskColor(for: profile.metabolic),
-                    icon: "figure.walk"
+                    icon: "figure.walk",
+                    action: { selectedDomain = .metabolic }
                 )
 
                 if !profile.correlations.isEmpty {
                     correlationsCard
                 }
+
+                NHSResourcesCard(profile: profile)
 
                 if let error = viewModel.errorMessage {
                     Text(error)
@@ -99,27 +121,8 @@ struct DashboardView: View {
                     }
                 }
                 .buttonStyle(NHSPrimaryButtonStyle())
-
-                if viewModel.latestAssessment != nil {
-                    Button("View Latest Results") {
-                        showResults = true
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(NHSTheme.primaryBlue)
-                }
             }
             .padding()
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Your Health Overview")
-                .font(.title2.bold())
-                .foregroundStyle(NHSTheme.primaryBlue)
-            Text("Scores are calculated on-device. Only abstracted categories are sent for AI summary.")
-                .font(.caption)
-                .foregroundStyle(NHSTheme.textSecondary)
         }
     }
 

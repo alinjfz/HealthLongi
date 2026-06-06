@@ -30,7 +30,7 @@ struct RootView: View {
                 }
                 .tag(AppTab.dashboard)
 
-            QuestionnaireFlowView()
+            AssessHubView()
                 .tabItem {
                     Label("Assess", systemImage: "list.clipboard.fill")
                 }

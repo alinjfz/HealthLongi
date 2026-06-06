@@ -73,7 +73,8 @@ struct RiskCalculator: RiskCalculating {
         }
 
         switch input.demographics.smokingStatus {
-        case .current: score += 5
+        case .currentRegular, .currentOccasional, .vapingRegular, .vapingOccasional:
+            score += 5
         case .former: score += 2
         case .never: break
         }

@@ -62,21 +62,18 @@ struct ResultsView: View {
             DomainStatusCard(
                 title: "Cardiovascular",
                 subtitle: "On-device score",
-                status: profile.cardioRisk.displayName,
                 color: NHSTheme.riskColor(for: profile.cardioRisk),
                 icon: "heart.fill"
             )
             DomainStatusCard(
                 title: "Mental Health",
                 subtitle: "On-device score",
-                status: profile.mentalHealth.displayName,
                 color: NHSTheme.mentalColor(for: profile.mentalHealth),
                 icon: "brain.head.profile"
             )
             DomainStatusCard(
                 title: "Metabolic",
                 subtitle: "On-device score",
-                status: profile.metabolic.displayName,
                 color: NHSTheme.riskColor(for: profile.metabolic),
                 icon: "figure.walk"
             )

@@ -2,3 +2,4 @@ Secrets.xcconfig
 *.xcuserstate
 xcuserdata/
 .DS_Store
+/plans
