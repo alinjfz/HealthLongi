@@ -53,6 +53,9 @@ struct DashboardView: View {
                     guard newPhase == .active else { return }
                     Task { await refreshAndAssess(reason: .appOpened) }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .demoHealthDataDidSeed)) { _ in
+                    Task { await refreshAndAssess(reason: .newData) }
+                }
                 .onChange(of: assessments.count) {
                     guard !viewModel.isUpdatingAssessment else { return }
                     viewModel.loadLatest(from: assessments, preferExistingSummary: true)

@@ -78,6 +78,9 @@ struct AssessHubView: View {
                 refreshViewModel()
                 Task { await refreshHealthKit() }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .demoHealthDataDidSeed)) { _ in
+                Task { await refreshHealthKit() }
+            }
             .onChange(of: profiles.first?.phq9Complete) { refreshViewModel() }
             .onChange(of: profiles.first?.gad7Complete) { refreshViewModel() }
             .onChange(of: profiles.first?.who5Complete) { refreshViewModel() }

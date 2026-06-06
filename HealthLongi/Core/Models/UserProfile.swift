@@ -260,12 +260,18 @@ final class UserProfile {
 
     /// Syncs metabolic fields from a HealthKit weekly snapshot for risk scoring.
     func syncMetabolicData(from snapshot: WeeklyHealthSnapshot) {
-        bmi = snapshot.bmi
-        weightKg = snapshot.bodyMass
+        if let bmi = snapshot.bmi {
+            self.bmi = bmi
+        }
+        if let weightKg = snapshot.bodyMass {
+            self.weightKg = weightKg
+        }
         if let heightMetres = snapshot.height {
             heightCm = heightMetres * 100
         }
-        physicalActivityMinutes = snapshot.weeklyExerciseMinutes
+        if let minutes = snapshot.weeklyExerciseMinutes {
+            physicalActivityMinutes = minutes
+        }
     }
 
     /// Backfill completion flags for profiles saved before flags were introduced.

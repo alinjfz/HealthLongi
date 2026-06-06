@@ -365,7 +365,7 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .bodyMass: "scalemass.fill"
         case .height: "ruler"
         case .bmi: "figure.walk"
-        case .bodyFat: "figure.scale"
+        case .bodyFat: "percent"
         case .exerciseMinutes: "figure.run"
         case .mindfulMinutes: "brain.head.profile"
         }

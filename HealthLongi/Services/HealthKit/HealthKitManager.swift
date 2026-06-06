@@ -1,12 +1,18 @@
 import Foundation
 import HealthKit
 
+/// HealthKit returns this when a statistics query finds no samples — not a real failure.
+private func isHealthKitNoDataError(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    return nsError.domain == HKError.errorDomain && nsError.code == HKError.Code.errorNoData.rawValue
+}
+
 final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
     private let healthStore = HKHealthStore()
 
     var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
-    private var readTypes: Set<HKObjectType> {
+    static var readObjectTypes: Set<HKObjectType> {
         var types = Set<HKObjectType>()
         // Activity
         if let t = HKQuantityType.quantityType(forIdentifier: .stepCount) { types.insert(t) }
@@ -35,7 +41,7 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailable
         }
-        try await healthStore.requestAuthorization(toShare: [], read: readTypes)
+        try await healthStore.requestAuthorization(toShare: [], read: Self.readObjectTypes)
     }
 
     func fetchWeeklySnapshot() async throws -> WeeklyHealthSnapshot {
@@ -130,7 +136,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, result, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let sum = result?.sumQuantity() else {
                     continuation.resume(returning: nil); return
                 }
@@ -155,7 +168,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 intervalComponents: DateComponents(day: 1)
             )
             query.initialResultsHandler = { _, results, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let results else { continuation.resume(returning: []); return }
 
                 var points: [DailyDataPoint] = []
@@ -184,7 +204,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 intervalComponents: DateComponents(day: 1)
             )
             query.initialResultsHandler = { _, results, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let results else { continuation.resume(returning: []); return }
 
                 var points: [DailyDataPoint] = []
@@ -208,7 +235,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
             let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [
                 NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
             ]) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let samples = samples as? [HKQuantitySample] else {
                     continuation.resume(returning: []); return
                 }
@@ -231,7 +265,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         return try await withCheckedThrowingContinuation { continuation in
             let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
             let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let samples = samples as? [HKCategorySample] else {
                     continuation.resume(returning: []); return
                 }
@@ -261,13 +302,20 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         return try await withCheckedThrowingContinuation { continuation in
             let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
             let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let samples = samples as? [HKCategorySample] else {
                     continuation.resume(returning: []); return
                 }
 
                 var dailyMinutes: [Date: Double] = [:]
-                for sample in samples where sample.value == 1 {
+                for sample in samples {
                     let day = Calendar.current.startOfDay(for: sample.startDate)
                     dailyMinutes[day, default: 0] += sample.endDate.timeIntervalSince(sample.startDate) / 60
                 }
@@ -323,7 +371,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                     intervalComponents: DateComponents(day: 1)
                 )
                 query.initialResultsHandler = { _, results, error in
-                    if let error { continuation.resume(throwing: error); return }
+                    if let error {
+                        if isHealthKitNoDataError(error) {
+                            continuation.resume(returning: nil)
+                        } else {
+                            continuation.resume(throwing: error)
+                        }
+                        return
+                    }
                     guard let results else { continuation.resume(returning: nil); return }
 
                     var total = 0.0
@@ -343,7 +398,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                     quantitySamplePredicate: predicate,
                     options: .discreteAverage
                 ) { _, result, error in
-                    if let error { continuation.resume(throwing: error); return }
+                    if let error {
+                        if isHealthKitNoDataError(error) {
+                            continuation.resume(returning: nil)
+                        } else {
+                            continuation.resume(throwing: error)
+                        }
+                        return
+                    }
                     guard let avg = result?.averageQuantity() else {
                         continuation.resume(returning: nil); return
                     }
@@ -365,7 +427,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 limit: 1,
                 sortDescriptors: [sort]
             ) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let sample = samples?.first as? HKQuantitySample else {
                     continuation.resume(returning: nil); return
                 }
@@ -398,7 +467,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
             )
 
             query.initialResultsHandler = { _, results, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: StepAverageResult(average: 0, hasData: false))
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let results else {
                     continuation.resume(returning: StepAverageResult(average: 0, hasData: false))
                     return
@@ -432,7 +508,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 quantitySamplePredicate: predicate,
                 options: .discreteAverage
             ) { _, result, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let avg = result?.averageQuantity() else {
                     continuation.resume(returning: nil); return
                 }
@@ -455,7 +538,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: nil
             ) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
                     continuation.resume(returning: nil); return
                 }
@@ -492,13 +582,20 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: nil
             ) { _, samples, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error {
+                    if isHealthKitNoDataError(error) {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
                 guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
                     continuation.resume(returning: nil); return
                 }
 
                 var totalMinutes = 0.0
-                for sample in samples where sample.value == 1 { // mindful = 1
+                for sample in samples {
                     totalMinutes += sample.endDate.timeIntervalSince(sample.startDate) / 60.0
                 }
 
@@ -512,11 +609,14 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
 
 enum HealthKitError: LocalizedError {
     case notAvailable
+    case noSamplesGenerated
 
     var errorDescription: String? {
         switch self {
         case .notAvailable:
             "HealthKit is not available on this device."
+        case .noSamplesGenerated:
+            "No valid HealthKit samples could be generated for the current time."
         }
     }
 }

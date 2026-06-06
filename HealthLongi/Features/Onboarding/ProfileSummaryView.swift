@@ -55,6 +55,9 @@ struct ProfileSummaryView: View {
             .task {
                 await refreshProfile()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .demoHealthDataDidSeed)) { _ in
+                Task { await refreshProfile() }
+            }
             .sheet(isPresented: $showEditDemographics) {
                 if let profile = profiles.first {
                     EditDemographicsView(profile: profile)

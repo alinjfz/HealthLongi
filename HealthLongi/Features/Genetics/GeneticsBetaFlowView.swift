@@ -227,7 +227,7 @@ struct GeneticsBetaCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
-                Image(systemName: "dna")
+                Image(systemName: "leaf.fill")
                     .font(.title2)
                     .foregroundStyle(NHSTheme.primaryBlue)
                     .frame(width: 44, height: 44)
