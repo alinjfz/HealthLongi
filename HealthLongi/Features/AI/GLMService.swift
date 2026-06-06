@@ -42,36 +42,29 @@ struct GLMService: AISummarizing {
                 ["role": "system", "content": GLMPrompts.systemPrompt],
                 ["role": "user", "content": GLMPrompts.userPrompt(for: profile)]
             ],
-            "temperature": 0.7
+            "temperature": 0.75,
+            "max_tokens": 180,
+            "thinking": ["type": "disabled"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)
 
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw GLMError.requestFailed
+            throw GLMError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode)
         }
 
         let decoded = try JSONDecoder().decode(GLMChatResponse.self, from: data)
-        guard let content = decoded.choices.first?.message.content, !content.isEmpty else {
-            throw GLMError.emptyResponse
+        if let content = decoded.choices.first?.message.content?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !content.isEmpty {
+            return content
         }
-        return content
+        throw GLMError.emptyResponse
     }
 
     private func fallbackResult(for profile: AbstractedRiskProfile) -> AISummaryResult {
-        var summary = AISummaryResult.fallback.markdownSummary
-
-        if profile.correlations.contains("dropping_steps_with_high_gad7") {
-            summary += """
-
-            **Mind-body connection:** Your recent decrease in physical activity alongside elevated anxiety \
-            is a pattern worth discussing with your GP. Small daily walks can help both body and mind.
-            """
-        }
-
-        return AISummaryResult(
-            markdownSummary: summary,
+        AISummaryResult(
+            markdownSummary: GLMPrompts.fallbackText(for: profile),
             suggestedLinkKeys: NHSLinks.links(for: profile).map(\.id),
             usedFallback: true
         )
@@ -79,7 +72,7 @@ struct GLMService: AISummarizing {
 }
 
 enum GLMError: Error {
-    case requestFailed
+    case requestFailed(statusCode: Int?)
     case emptyResponse
 }
 
@@ -92,5 +85,5 @@ private struct GLMChoice: Decodable {
 }
 
 private struct GLMMessage: Decodable {
-    let content: String
+    let content: String?
 }

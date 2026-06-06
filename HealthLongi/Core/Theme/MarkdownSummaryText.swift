@@ -79,6 +79,23 @@ enum MarkdownSummaryFormatter {
         return blocks
     }
 
+    /// First paragraph block only — used for collapsed summary preview.
+    static func previewBlocks(from markdown: String) -> [MarkdownBlock] {
+        let all = blocks(from: markdown)
+        if let index = all.firstIndex(where: { if case .paragraph = $0 { true } else { false } }) {
+            return [all[index]]
+        }
+        return Array(all.prefix(1))
+    }
+
+    static func hasContentAfterFirstParagraph(_ markdown: String) -> Bool {
+        let all = blocks(from: markdown)
+        guard let firstParagraphIndex = all.firstIndex(where: { if case .paragraph = $0 { true } else { false } }) else {
+            return all.count > 1
+        }
+        return firstParagraphIndex < all.count - 1
+    }
+
     private static func numberedListItem(from line: String) -> String? {
         guard let dotIndex = line.firstIndex(of: "."),
               line[..<dotIndex].allSatisfy(\.isNumber) else {
@@ -95,12 +112,17 @@ enum MarkdownSummaryFormatter {
 
 struct MarkdownSummaryText: View {
     let content: String
-    var maxBlocks: Int?
+    var isExpanded: Bool = true
 
     private var blocks: [MarkdownBlock] {
-        let all = MarkdownSummaryFormatter.blocks(from: content)
-        guard let maxBlocks, all.count > maxBlocks else { return all }
-        return Array(all.prefix(maxBlocks))
+        if isExpanded {
+            return MarkdownSummaryFormatter.blocks(from: content)
+        }
+        return MarkdownSummaryFormatter.previewBlocks(from: content)
+    }
+
+    static func hasMoreContent(_ content: String) -> Bool {
+        MarkdownSummaryFormatter.hasContentAfterFirstParagraph(content)
     }
 
     var body: some View {

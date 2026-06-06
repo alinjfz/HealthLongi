@@ -120,7 +120,7 @@ struct DashboardView: View {
             .padding()
         }
         .refreshable {
-            await refreshAndAssess(reason: .newData)
+            await refreshAndAssess(reason: .userRefresh)
         }
     }
 

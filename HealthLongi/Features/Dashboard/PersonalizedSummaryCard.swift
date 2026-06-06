@@ -43,6 +43,9 @@ struct PersonalizedSummaryCard: View {
             }
         }
         .nhsCard()
+        .onChange(of: summaryText) {
+            isSummaryExpanded = false
+        }
     }
 
     private var headerRow: some View {
@@ -106,11 +109,11 @@ struct PersonalizedSummaryCard: View {
 
             MarkdownSummaryText(
                 content: summaryText,
-                maxBlocks: isSummaryExpanded ? nil : 5
+                isExpanded: isSummaryExpanded
             )
 
-            if summaryText.count > 200 {
-                Button(isSummaryExpanded ? "Show Less" : "Read Full Summary") {
+            if MarkdownSummaryText.hasMoreContent(summaryText) {
+                Button(isSummaryExpanded ? "Show Less" : "Full Summary") {
                     withAnimation(.spring(duration: 0.35)) {
                         isSummaryExpanded.toggle()
                     }

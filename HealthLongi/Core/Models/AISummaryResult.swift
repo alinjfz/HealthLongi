@@ -7,11 +7,9 @@ struct AISummaryResult: Sendable, Equatable {
 
     static let fallback = AISummaryResult(
         markdownSummary: """
-        Based on your assessment scores, we recommend speaking with your GP for personalised advice.
+        Things look fairly steady overall. Keep up the small habits that work for you.
 
-        **Next steps:**
-        - Book an appointment with your GP
-        - Visit [NHS 111 online](https://111.nhs.uk/) if you need guidance now
+        Try one gentle step this week — a short walk, a consistent bedtime, or a moment to unwind.
         """,
         suggestedLinkKeys: ["nhs_111", "find_gp"],
         usedFallback: true

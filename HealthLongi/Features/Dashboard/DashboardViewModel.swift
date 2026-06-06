@@ -112,7 +112,7 @@ final class DashboardViewModel {
         guard profile.phq9Score > 0 || profile.gad7Score > 0 else { return }
 
         let shouldRun: Bool = switch reason {
-        case .appOpened:
+        case .appOpened, .userRefresh:
             true
         case .newData:
             hasNewHealthData || hasNewQuestionnaireData
@@ -146,6 +146,7 @@ final class DashboardViewModel {
 enum AutoAssessmentReason {
     case appOpened
     case newData
+    case userRefresh
 }
 
 struct ReadinessItem {
