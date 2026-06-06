@@ -4,6 +4,7 @@ struct GLMService: AISummarizing {
     private let apiKey: String?
     private let session: URLSession
     private let endpoint = URL(string: "https://api.z.ai/api/paas/v4/chat/completions")!
+    private let model = "glm-4.5-air"
 
     init(apiKey: String? = AppConfig.glmAPIKey, session: URLSession = .shared) {
         self.apiKey = apiKey
@@ -32,10 +33,11 @@ struct GLMService: AISummarizing {
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("en-US,en", forHTTPHeaderField: "Accept-Language")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
         let body: [String: Any] = [
-            "model": "glm-4-flash",
+            "model": model,
             "messages": [
                 ["role": "system", "content": GLMPrompts.systemPrompt],
                 ["role": "user", "content": GLMPrompts.userPrompt(for: profile)]

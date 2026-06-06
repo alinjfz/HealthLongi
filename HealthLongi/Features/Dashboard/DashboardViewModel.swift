@@ -4,7 +4,7 @@ import SwiftData
 @MainActor
 @Observable
 final class DashboardViewModel {
-    var isLoading = false
+    var isUpdatingAssessment = false
     var errorMessage: String?
     var latestAssessment: RiskAssessment?
     var latestSummary: AISummaryResult?
@@ -20,6 +20,7 @@ final class DashboardViewModel {
 
     private let healthDataProvider: (any HealthDataProviding)?
     private var lastAssessmentTimestamp: Date?
+    private var isRunningAssessment = false
 
     init(healthDataProvider: (any HealthDataProviding)? = nil) {
         self.healthDataProvider = healthDataProvider
@@ -27,9 +28,15 @@ final class DashboardViewModel {
 
     func loadLatest(from assessments: [RiskAssessment]) {
         latestAssessment = assessments.sorted { $0.timestamp > $1.timestamp }.first
-        if let profile = latestAssessment?.abstractedProfile {
-            selectedTips = HealthTips.forProfile(profile)
+        if let assessment = latestAssessment {
+            latestSummary = AISummaryResult(
+                markdownSummary: assessment.aiSummaryText,
+                suggestedLinkKeys: NHSLinks.links(for: assessment.abstractedProfile).map(\.id),
+                usedFallback: assessment.usedAIFallback
+            )
+            selectedTips = HealthTips.forProfile(assessment.abstractedProfile)
         } else {
+            latestSummary = nil
             selectedTips = Array(HealthTips.all.prefix(3))
         }
         lastAssessmentTimestamp = latestAssessment?.timestamp
@@ -46,6 +53,8 @@ final class DashboardViewModel {
             // Check if there's new data since last assessment
             if let lastAssessment = lastAssessmentTimestamp {
                 hasNewHealthData = snapshot.fetchedAt > lastAssessment
+            } else if snapshot.averageDailySteps > 0 {
+                hasNewHealthData = true
             }
         } catch {
             healthSnapshot = .empty
@@ -92,27 +101,29 @@ final class DashboardViewModel {
         return (completed, items.count, items)
     }
 
-    var canRunAssessment: Bool {
-        guard let assessment = latestAssessment else { return true }
-        return hasNewHealthData || hasNewQuestionnaireData || assessment.timestamp < Date.now.addingTimeInterval(-3600)
-    }
-
-    func runAssessment(
+    func autoRunAssessmentIfNeeded(
         profile: UserProfile?,
         orchestrator: AssessmentOrchestrator,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        reason: AutoAssessmentReason
     ) async {
-        guard let profile else {
-            errorMessage = "Complete onboarding first."
-            return
+        guard !isRunningAssessment else { return }
+        guard let profile else { return }
+        guard profile.phq9Score > 0 || profile.gad7Score > 0 else { return }
+
+        let shouldRun: Bool = switch reason {
+        case .appOpened:
+            true
+        case .newData:
+            hasNewHealthData || hasNewQuestionnaireData
         }
 
-        guard profile.phq9Score > 0 || profile.gad7Score > 0 else {
-            errorMessage = "Complete questionnaires in the Assess tab first."
-            return
-        }
+        guard shouldRun else { return }
 
-        isLoading = true
+        isRunningAssessment = true
+        defer { isRunningAssessment = false }
+
+        isUpdatingAssessment = true
         errorMessage = nil
 
         do {
@@ -128,8 +139,13 @@ final class DashboardViewModel {
             errorMessage = error.localizedDescription
         }
 
-        isLoading = false
+        isUpdatingAssessment = false
     }
+}
+
+enum AutoAssessmentReason {
+    case appOpened
+    case newData
 }
 
 struct ReadinessItem {

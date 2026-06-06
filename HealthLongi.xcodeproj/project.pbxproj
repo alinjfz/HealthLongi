@@ -21,9 +21,22 @@
 		29A100012FD460F300272A39 /* HealthLongiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HealthLongiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		29A1000B2FD460F400272A39 /* Exceptions for "HealthLongi" folder in "HealthLongi" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Config/Info.plist,
+			);
+			target = 297B7B5E2FD460F300272A39 /* HealthLongi */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		297B7B612FD460F300272A39 /* HealthLongi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				29A1000B2FD460F400272A39 /* Exceptions for "HealthLongi" folder in "HealthLongi" target */,
+			);
 			path = HealthLongi;
 			sourceTree = "<group>";
 		};
@@ -322,8 +335,8 @@
 				DEVELOPMENT_TEAM = 3FGB24BJ83;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HealthLongi/Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Vitals & Mind";
-				INFOPLIST_KEY_GLM_API_KEY = "$(GLM_API_KEY)";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Vitals & Mind reads your steps, heart rate, and sleep to calculate on-device health scores. Raw data never leaves your device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Vitals & Mind may save health insights locally on your device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -361,8 +374,8 @@
 				DEVELOPMENT_TEAM = 3FGB24BJ83;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HealthLongi/Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Vitals & Mind";
-				INFOPLIST_KEY_GLM_API_KEY = "$(GLM_API_KEY)";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Vitals & Mind reads your steps, heart rate, and sleep to calculate on-device health scores. Raw data never leaves your device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Vitals & Mind may save health insights locally on your device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -4,11 +4,11 @@ import SwiftData
 struct DashboardView: View {
     @Environment(\.appDependencies) private var dependencies
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \RiskAssessment.timestamp, order: .reverse) private var assessments: [RiskAssessment]
     @Query private var profiles: [UserProfile]
 
     @State private var viewModel: DashboardViewModel
-    @State private var showResults = false
     @State private var selectedDomain: HealthDomain?
 
     init() {
@@ -25,60 +25,51 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    LoadingView(message: "Calculating scores and generating your summary…")
-                } else {
-                    dashboardContent
+            dashboardContent
+                .background(NHSTheme.background)
+                .navigationTitle("Dashboard")
+                .onAppear {
+                    viewModel = DashboardViewModel(healthDataProvider: dependencies.healthDataProvider)
+                    viewModel.loadLatest(from: assessments)
+                    Task { await refreshAndAssess(reason: .appOpened) }
                 }
-            }
-            .background(NHSTheme.background)
-            .navigationTitle("Dashboard")
-            .onAppear {
-                viewModel = DashboardViewModel(healthDataProvider: dependencies.healthDataProvider)
-                viewModel.loadLatest(from: assessments)
-                Task { await viewModel.refreshHealthKit() }
-            }
-            .onChange(of: assessments.count) {
-                viewModel.loadLatest(from: assessments)
-            }
-            .onChange(of: profiles.first?.phq9Score) {
-                viewModel.markQuestionnaireDataUpdated()
-            }
-            .onChange(of: profiles.first?.gad7Score) {
-                viewModel.markQuestionnaireDataUpdated()
-            }
-            .sheet(isPresented: $showResults) {
-                if let assessment = viewModel.latestAssessment {
-                    ResultsView(
-                        assessment: assessment,
-                        summary: viewModel.latestSummary ?? AISummaryResult(
-                            markdownSummary: assessment.aiSummaryText,
-                            suggestedLinkKeys: NHSLinks.links(for: assessment.abstractedProfile).map(\.id),
-                            usedFallback: assessment.usedAIFallback
-                        )
-                    )
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    Task { await refreshAndAssess(reason: .appOpened) }
                 }
-            }
-            .sheet(item: $selectedDomain) { domain in
-                DomainDetailView(domain: domain, profile: profile)
-            }
+                .onChange(of: assessments.count) {
+                    guard !viewModel.isUpdatingAssessment else { return }
+                    viewModel.loadLatest(from: assessments)
+                }
+                .onChange(of: profiles.first?.phq9Score) {
+                    viewModel.markQuestionnaireDataUpdated()
+                    Task { await runAssessmentIfNeeded(reason: .newData) }
+                }
+                .onChange(of: profiles.first?.gad7Score) {
+                    viewModel.markQuestionnaireDataUpdated()
+                    Task { await runAssessmentIfNeeded(reason: .newData) }
+                }
+                .sheet(item: $selectedDomain) { domain in
+                    DomainDetailView(domain: domain, profile: profile)
+                }
         }
     }
 
     private var dashboardContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Personalized summary always at the top
                 PersonalizedSummaryCard(
                     quote: viewModel.motivationalQuote,
+                    profile: profile,
                     summaryText: summaryText,
+                    usedFallback: viewModel.latestSummary?.usedFallback ?? viewModel.latestAssessment?.usedAIFallback ?? false,
+                    isUpdating: viewModel.isUpdatingAssessment,
+                    lastUpdated: viewModel.latestAssessment?.timestamp,
                     tips: viewModel.selectedTips,
                     completedTipIDs: viewModel.completedTipIDs,
                     onToggleTip: { viewModel.toggleTipCompletion($0) }
                 )
 
-                // Last refreshed indicator
                 if let lastRefreshed = viewModel.lastRefreshedAt {
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
@@ -89,7 +80,6 @@ struct DashboardView: View {
                     .foregroundStyle(NHSTheme.textSecondary)
                 }
 
-                // Domain status cards
                 DomainStatusCard(
                     title: "Cardiovascular",
                     subtitle: "Heart & circulation risk",
@@ -118,26 +108,6 @@ struct DashboardView: View {
                     correlationsCard
                 }
 
-                // Gamified Assessment CTA
-                let readiness = viewModel.readinessProgress(for: profiles.first)
-                AssessmentCTACard(
-                    profile: profiles.first,
-                    readiness: readiness,
-                    hasNewData: viewModel.hasNewHealthData || viewModel.hasNewQuestionnaireData,
-                    isLoading: viewModel.isLoading
-                ) {
-                    Task {
-                        await viewModel.runAssessment(
-                            profile: profiles.first,
-                            orchestrator: dependencies.orchestrator,
-                            modelContext: modelContext
-                        )
-                        if viewModel.latestAssessment != nil {
-                            showResults = true
-                        }
-                    }
-                }
-
                 NHSResourcesCard(profile: profile)
 
                 if let error = viewModel.errorMessage {
@@ -150,8 +120,22 @@ struct DashboardView: View {
             .padding()
         }
         .refreshable {
-            await viewModel.refreshHealthKit()
+            await refreshAndAssess(reason: .newData)
         }
+    }
+
+    private func refreshAndAssess(reason: AutoAssessmentReason) async {
+        await viewModel.refreshHealthKit()
+        await runAssessmentIfNeeded(reason: reason)
+    }
+
+    private func runAssessmentIfNeeded(reason: AutoAssessmentReason) async {
+        await viewModel.autoRunAssessmentIfNeeded(
+            profile: profiles.first,
+            orchestrator: dependencies.orchestrator,
+            modelContext: modelContext,
+            reason: reason
+        )
     }
 
     private var correlationsCard: some View {

@@ -2,67 +2,142 @@ import SwiftUI
 
 struct PersonalizedSummaryCard: View {
     let quote: MotivationalQuote
+    let profile: AbstractedRiskProfile
     let summaryText: String?
+    let usedFallback: Bool
+    let isUpdating: Bool
+    let lastUpdated: Date?
     let tips: [HealthTip]
     let completedTipIDs: Set<String>
     let onToggleTip: (String) -> Void
 
-    @State private var isExpanded = false
-
-    private var previewText: String {
-        if let summaryText, !summaryText.isEmpty {
-            return String(summaryText.prefix(120)) + (summaryText.count > 120 ? "…" : "")
-        }
-        return quote.quote
-    }
+    @State private var isTipsExpanded = false
+    @State private var isSummaryExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
+            headerRow
+
+            riskBadges
+
+            summaryContent
+
+            if !tips.isEmpty {
+                Button(isTipsExpanded ? "Show Less" : "Show Tips") {
+                    withAnimation(.spring(duration: 0.35)) {
+                        isTipsExpanded.toggle()
+                    }
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+                if isTipsExpanded {
+                    ForEach(tips) { tip in
+                        GamifiedIcon(
+                            tip: tip,
+                            isCompleted: completedTipIDs.contains(tip.id),
+                            onToggle: { onToggleTip(tip.id) }
+                        )
+                    }
+                }
+            }
+        }
+        .nhsCard()
+    }
+
+    private var headerRow: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your Health Summary")
+                    .font(.headline)
+                    .foregroundStyle(NHSTheme.textPrimary)
+
+                if let lastUpdated {
+                    Text("Updated \(lastUpdated.formatted(.relative(presentation: .named)))")
+                        .font(.caption2)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+            }
+
+            Spacer()
+
+            if isUpdating {
+                ProgressView()
+                    .tint(NHSTheme.primaryBlue)
+            }
+        }
+    }
+
+    private var riskBadges: some View {
+        HStack(spacing: 8) {
+            riskBadge("Heart", color: NHSTheme.riskColor(for: profile.cardioRisk))
+            riskBadge("Mind", color: NHSTheme.mentalColor(for: profile.mentalHealth))
+            riskBadge("Metabolic", color: NHSTheme.riskColor(for: profile.metabolic))
+        }
+    }
+
+    private func riskBadge(_ label: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(NHSTheme.textSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(NHSTheme.lightBlue)
+        .clipShape(Capsule())
+    }
+
+    @ViewBuilder
+    private var summaryContent: some View {
+        if isUpdating && (summaryText == nil || summaryText?.isEmpty == true) {
+            Text("Calculating scores and generating your summary…")
+                .font(.subheadline)
+                .foregroundStyle(NHSTheme.textSecondary)
+        } else if let summaryText, !summaryText.isEmpty {
+            if usedFallback {
+                Label("Offline summary — AI insights unavailable", systemImage: "wifi.slash")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            if let attributed = try? AttributedString(
+                markdown: summaryText,
+                options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+            ) {
+                Text(attributed)
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.textPrimary)
+                    .lineLimit(isSummaryExpanded ? nil : 8)
+            } else {
+                Text(summaryText)
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.textPrimary)
+                    .lineLimit(isSummaryExpanded ? nil : 8)
+            }
+
+            if summaryText.count > 200 {
+                Button(isSummaryExpanded ? "Show Less" : "Read Full Summary") {
+                    withAnimation(.spring(duration: 0.35)) {
+                        isSummaryExpanded.toggle()
+                    }
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(NHSTheme.primaryBlue)
+            }
+        } else {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: quote.category.icon)
                     .font(.title3)
                     .foregroundStyle(NHSTheme.primaryBlue)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(quote.quote)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(NHSTheme.textPrimary)
-                        .lineLimit(isExpanded ? nil : 2)
-
-                    if isExpanded {
-                        if let summaryText, !summaryText.isEmpty {
-                            Divider()
-                            Text(summaryText)
-                                .font(.subheadline)
-                                .foregroundStyle(NHSTheme.textSecondary)
-                        }
-
-                        if !tips.isEmpty {
-                            Divider()
-                            Text("Today's Tips")
-                                .font(.headline)
-                                .foregroundStyle(NHSTheme.primaryBlue)
-
-                            ForEach(tips) { tip in
-                                GamifiedIcon(
-                                    tip: tip,
-                                    isCompleted: completedTipIDs.contains(tip.id),
-                                    onToggle: { onToggleTip(tip.id) }
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(quote.quote)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NHSTheme.textPrimary)
             }
-
-            Button(isExpanded ? "Show Less" : "Show More") {
-                withAnimation(.spring(duration: 0.35)) {
-                    isExpanded.toggle()
-                }
-            }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(NHSTheme.primaryBlue)
         }
-        .nhsCard()
     }
 }
