@@ -12,7 +12,7 @@ extension HealthKitMetric {
         switch self {
         case .steps, .restingHeartRate, .sleep, .activeEnergy, .distance, .hrv, .oxygenSaturation, .bodyMass, .mindfulMinutes:
             true
-        case .height, .bodyFat:
+        case .height, .bodyFat, .bmi, .exerciseMinutes:
             false
         }
     }

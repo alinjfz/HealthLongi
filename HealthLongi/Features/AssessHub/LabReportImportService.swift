@@ -48,7 +48,28 @@ enum LabReportImportService {
         }
     }
 
-    static func extractText(from pdfURL: URL) throws -> String {
+    static func extractText(from fileURL: URL) throws -> String {
+        let ext = fileURL.pathExtension.lowercased()
+        if ext == "pdf" {
+            return try extractPDFText(from: fileURL)
+        }
+        return try extractPlainText(from: fileURL)
+    }
+
+    static func extractPlainText(from url: URL) throws -> String {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            throw ImportError.noTextFound
+        }
+        return text
+    }
+
+    private static func extractPDFText(from pdfURL: URL) throws -> String {
         let accessed = pdfURL.startAccessingSecurityScopedResource()
         defer {
             if accessed { pdfURL.stopAccessingSecurityScopedResource() }
@@ -71,6 +92,10 @@ enum LabReportImportService {
             throw ImportError.noTextFound
         }
         return text
+    }
+
+    static func parseReportDate(from text: String) -> Date? {
+        LabReportOCRService.parseReportDate(from: text)
     }
 
     static func parseImportedText(_ text: String) -> [LabReportOCRService.ParsedValue] {

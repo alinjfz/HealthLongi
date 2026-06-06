@@ -23,7 +23,7 @@ struct AssessHubView: View {
                     header
 
                     sectionHeader("Questionnaires")
-                    ForEach(QuestionnaireKind.allCases) { kind in
+                    ForEach(QuestionnaireKind.activeCases) { kind in
                         AssessmentCard(
                             title: kind.title,
                             subtitle: kind.subtitle,
@@ -33,13 +33,6 @@ struct AssessHubView: View {
                             activeSheet = .questionnaire(kind)
                         }
                     }
-
-                    AssessmentCard(
-                        title: "Metabolic Inputs",
-                        subtitle: "Weight, height, BMI and weekly activity",
-                        icon: "figure.walk",
-                        isCompleted: viewModel.metabolicCompleted
-                    ) { activeSheet = .metabolic }
 
                     sectionHeader("Lab & Calculators")
                     AssessmentCard(
@@ -94,10 +87,6 @@ struct AssessHubView: View {
                 switch sheet {
                 case .questionnaire(let kind):
                     QuestionnaireSheetView(kind: kind, profile: profile, modelContext: modelContext) {
-                        refreshViewModel()
-                    }
-                case .metabolic:
-                    MetabolicSheetView(profile: profile, modelContext: modelContext, healthSnapshot: healthSnapshot) {
                         refreshViewModel()
                     }
                 case .labData(let userProfile):
@@ -241,7 +230,10 @@ struct AssessHubView: View {
         }
         do {
             try await dependencies.healthDataProvider.requestAuthorization()
-            healthSnapshot = try await dependencies.healthDataProvider.fetchWeeklySnapshot()
+            let snapshot = try await dependencies.healthDataProvider.fetchWeeklySnapshot()
+            healthSnapshot = snapshot
+            profile?.syncMetabolicData(from: snapshot)
+            try? modelContext.save()
         } catch {
             healthSnapshot = .empty
             healthKitLoadError = error.localizedDescription
@@ -251,95 +243,15 @@ struct AssessHubView: View {
 
 private enum AssessSheet: Identifiable {
     case questionnaire(QuestionnaireKind)
-    case metabolic
     case labData(UserProfile)
     case calculators
 
     var id: String {
         switch self {
         case .questionnaire(let kind): "q-\(kind.rawValue)"
-        case .metabolic: "metabolic"
         case .labData(let profile): "lab-\(profile.persistentModelID)"
         case .calculators: "calculators"
         }
-    }
-}
-
-private struct MetabolicSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.appDependencies) private var dependencies
-    let profile: UserProfile?
-    let modelContext: ModelContext
-    let healthSnapshot: WeeklyHealthSnapshot
-    var onSave: () -> Void
-
-    @State private var bmi: Double?
-    @State private var weightKg: Double?
-    @State private var heightCm: Double?
-    @State private var activityMinutes = 60
-    @State private var snapshot: WeeklyHealthSnapshot
-
-    init(profile: UserProfile?, modelContext: ModelContext, healthSnapshot: WeeklyHealthSnapshot, onSave: @escaping () -> Void) {
-        self.profile = profile
-        self.modelContext = modelContext
-        self.healthSnapshot = healthSnapshot
-        self.onSave = onSave
-        _snapshot = State(initialValue: healthSnapshot)
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                MetabolicInputView(
-                    bmi: $bmi,
-                    weightKg: $weightKg,
-                    heightCm: $heightCm,
-                    physicalActivityMinutes: $activityMinutes,
-                    healthSnapshot: snapshot
-                )
-                .padding()
-            }
-            .background(NHSTheme.background)
-            .navigationTitle("Metabolic")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(bmi == nil)
-                }
-            }
-            .task {
-                await refreshSnapshot()
-            }
-            .onAppear {
-                if let profile {
-                    bmi = profile.bmi
-                    weightKg = profile.weightKg
-                    heightCm = profile.heightCm
-                    activityMinutes = profile.physicalActivityMinutes ?? 60
-                }
-            }
-        }
-    }
-
-    private func refreshSnapshot() async {
-        if let fetched = try? await dependencies.healthDataProvider.fetchWeeklySnapshot() {
-            snapshot = fetched
-        }
-    }
-
-    private func save() {
-        guard let profile, let bmi else { return }
-        profile.bmi = bmi
-        profile.weightKg = weightKg
-        profile.heightCm = heightCm
-        profile.physicalActivityMinutes = activityMinutes
-        try? modelContext.save()
-        onSave()
-        dismiss()
     }
 }
 

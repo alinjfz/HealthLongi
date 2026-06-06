@@ -53,8 +53,12 @@ enum HealthKitMetricAvailability: Equatable {
             snapshot.bodyMass != nil
         case .height:
             snapshot.height != nil
+        case .bmi:
+            snapshot.bmi != nil
         case .bodyFat:
             snapshot.bodyFatPercentage != nil
+        case .exerciseMinutes:
+            snapshot.weeklyExerciseMinutes != nil
         case .mindfulMinutes:
             snapshot.mindfulMinutes != nil
         }

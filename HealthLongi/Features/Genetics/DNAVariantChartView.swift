@@ -36,7 +36,7 @@ struct DNAVariantChartView: View {
                 .foregroundStyle(NHSTheme.textSecondary)
 
             if chartData.isEmpty {
-                Text("Upload a DNA report to see variant highlights.")
+                Text("Demo DNA variants will appear here.")
                     .font(.subheadline)
                     .foregroundStyle(NHSTheme.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 120)

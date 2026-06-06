@@ -24,6 +24,7 @@ final class AssessmentOrchestrator {
 
     func runAssessment(profile: UserProfile, modelContext: ModelContext) async throws -> AssessmentRunResult {
         let snapshot = await fetchSnapshotWithFallback()
+        profile.syncMetabolicData(from: snapshot)
 
         let input = AssessmentInput(
             demographics: profile.demographics,

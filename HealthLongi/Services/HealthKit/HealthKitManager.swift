@@ -22,6 +22,7 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         if let t = HKQuantityType.quantityType(forIdentifier: .bodyMass) { types.insert(t) }
         if let t = HKQuantityType.quantityType(forIdentifier: .height) { types.insert(t) }
         if let t = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage) { types.insert(t) }
+        if let t = HKQuantityType.quantityType(forIdentifier: .appleExerciseTime) { types.insert(t) }
         // Mindfulness
         if let t = HKCategoryType.categoryType(forIdentifier: .mindfulSession) { types.insert(t) }
         // Demographics (read-only, single sample)
@@ -62,6 +63,7 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         async let height = latestQuantity(for: .height, unit: .meter())
         async let bodyFat = latestQuantity(for: .bodyFatPercentage, unit: .percent())
         async let mindful = averageMindfulMinutes(from: weekAgo, to: now)
+        async let exerciseMinutes = weeklyExerciseMinutes(from: weekAgo, to: now)
 
         let currentSteps = try await currentStepsResult
         let priorSteps = try await priorStepsResult
@@ -74,11 +76,12 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
             distanceWalkingRunning: try await distance,
             averageRestingHeartRate: try await restingHR,
             heartRateVariability: try await hrv,
-            oxygenSaturation: normalizePercentage(try await spo2),
+            oxygenSaturation: HealthKitPercentage.displayPercent(from: try await spo2),
             averageSleepHours: try await sleep,
             bodyMass: try await mass,
             height: try await height,
-            bodyFatPercentage: normalizePercentage(try await bodyFat),
+            bodyFatPercentage: HealthKitPercentage.displayPercent(from: try await bodyFat),
+            weeklyExerciseMinutes: try await exerciseMinutes,
             mindfulMinutes: try await mindful,
             fetchedAt: now
         )
@@ -104,15 +107,37 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         case .hrv:
             return try await dailyAverageSeries(from: start, to: now, identifier: .heartRateVariabilitySDNN, unit: HKUnit.secondUnit(with: .milli))
         case .oxygenSaturation:
-            return try await dailyAverageSeries(from: start, to: now, identifier: .oxygenSaturation, unit: .percent())
+            let points = try await dailyAverageSeries(from: start, to: now, identifier: .oxygenSaturation, unit: .percent())
+            return points.map { DailyDataPoint(date: $0.date, value: HealthKitPercentage.displayPercent(from: $0.value) ?? $0.value) }
         case .bodyMass:
             return try await dailyLatestSeries(from: start, to: now, identifier: .bodyMass, unit: .gramUnit(with: .kilo))
         case .sleep:
             return try await dailySleepSeries(from: start, to: now)
         case .mindfulMinutes:
             return try await dailyMindfulSeries(from: start, to: now)
-        case .height, .bodyFat:
+        case .height, .bodyFat, .bmi, .exerciseMinutes:
             return []
+        }
+    }
+
+    private func weeklyExerciseMinutes(from start: Date, to end: Date) async throws -> Int? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .appleExerciseTime) else { return nil }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let sum = result?.sumQuantity() else {
+                    continuation.resume(returning: nil); return
+                }
+                let minutes = Int(sum.doubleValue(for: .minute()).rounded())
+                continuation.resume(returning: minutes > 0 ? minutes : nil)
+            }
+            healthStore.execute(query)
         }
     }
 
@@ -393,12 +418,6 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
 
             healthStore.execute(query)
         }
-    }
-
-    private func normalizePercentage(_ value: Double?) -> Double? {
-        guard let value else { return nil }
-        if value > 0 && value <= 1.0 { return value * 100 }
-        return value
     }
 
     // MARK: - Resting Heart Rate

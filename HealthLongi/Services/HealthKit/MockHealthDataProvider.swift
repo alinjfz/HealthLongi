@@ -17,6 +17,7 @@ struct MockHealthDataProvider: HealthDataProviding {
         bodyMass: 75,
         height: 1.75,
         bodyFatPercentage: 22,
+        weeklyExerciseMinutes: 180,
         mindfulMinutes: 5,
         fetchedAt: .now
     )) {
@@ -46,7 +47,9 @@ struct MockHealthDataProvider: HealthDataProviding {
             case .oxygenSaturation: base.oxygenSaturation ?? 97
             case .bodyMass: base.bodyMass ?? 75
             case .height: (base.height ?? 1.75) * 100
+            case .bmi: base.bmi ?? 24
             case .bodyFat: base.bodyFatPercentage ?? 22
+            case .exerciseMinutes: Double(base.weeklyExerciseMinutes ?? 150)
             case .mindfulMinutes: base.mindfulMinutes ?? 5
             }
         }()

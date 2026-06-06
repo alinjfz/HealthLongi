@@ -216,9 +216,34 @@ enum LabBiomarker: String, CaseIterable, Identifiable {
         }
     }
 
-    /// OCR aliases for Phase 2 Vision parsing
+    /// OCR aliases for on-device report parsing
     var ocrAliases: [String] {
-        [label, rawValue.uppercased(), label.replacingOccurrences(of: " ", with: "")]
+        var aliases = [label, rawValue.uppercased(), label.replacingOccurrences(of: " ", with: "")]
+        switch self {
+        case .hemoglobin: aliases += ["Haemoglobin", "Hemoglobin", "HGB"]
+        case .hematocrit: aliases += ["Haematocrit", "HCT"]
+        case .hba1c: aliases += ["HbA1c", "Hb A1c", "Glycated haemoglobin"]
+        case .ldlCholesterol: aliases += ["LDL Cholesterol", "LDL"]
+        case .hdlCholesterol: aliases += ["HDL Cholesterol", "HDL"]
+        case .cholesterol: aliases += ["Total Cholesterol", "Cholesterol"]
+        case .triglycerides: aliases += ["Triglyceride"]
+        case .creatinine: aliases += ["Creat"]
+        case .egfr: aliases += ["eGFR (CKD-EPI)", "eGFR", "GFR"]
+        case .alt: aliases += ["Alanine aminotransferase"]
+        case .ast: aliases += ["Aspartate aminotransferase"]
+        case .alp: aliases += ["Alkaline phosphatase"]
+        case .ggt: aliases += ["Gamma-glutamyl"]
+        case .tsh: aliases += ["Thyroid-stimulating hormone"]
+        case .ft4: aliases += ["Free T4", "Thyroxine"]
+        case .wbc: aliases += ["White Cell Count", "WBC"]
+        case .platelets: aliases += ["Platelet"]
+        case .sodium: aliases += ["Na"]
+        case .potassium: aliases += ["K"]
+        case .albumin: aliases += ["Serum albumin"]
+        case .crp: aliases += ["C-reactive protein", "hsCRP", "CRP"]
+        default: break
+        }
+        return aliases
     }
 
     static func forPanel(_ panel: LabPanel, sex: Sex) -> [LabCategory: [LabBiomarker]] {

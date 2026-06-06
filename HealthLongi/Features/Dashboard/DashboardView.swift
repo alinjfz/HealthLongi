@@ -1,6 +1,20 @@
 import SwiftUI
 import SwiftData
 
+private enum DashboardSection: String, CaseIterable, Identifiable {
+    case overview
+    case trends
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .overview: "Overview"
+        case .trends: "Trends"
+        }
+    }
+}
+
 struct DashboardView: View {
     @Environment(\.appDependencies) private var dependencies
     @Environment(\.modelContext) private var modelContext
@@ -10,6 +24,8 @@ struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel
     @State private var selectedDomain: HealthDomain?
+    @State private var dashboardSection: DashboardSection = .overview
+    @State private var activeQuestionnaire: QuestionnaireKind?
 
     init() {
         _viewModel = State(initialValue: DashboardViewModel())
@@ -52,75 +68,107 @@ struct DashboardView: View {
                 .sheet(item: $selectedDomain) { domain in
                     DomainDetailView(domain: domain, profile: profile)
                 }
+                .sheet(item: $activeQuestionnaire) { kind in
+                    if let userProfile = profiles.first {
+                        QuestionnaireSheetView(kind: kind, profile: userProfile, modelContext: modelContext) {
+                            viewModel.markQuestionnaireDataUpdated()
+                            Task { await runAssessmentIfNeeded(reason: .newData) }
+                        }
+                    }
+                }
         }
     }
 
     private var dashboardContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                PersonalizedSummaryCard(
-                    quote: viewModel.motivationalQuote,
-                    profile: profile,
-                    summaryText: summaryText,
-                    usedFallback: viewModel.latestSummary?.usedFallback ?? viewModel.latestAssessment?.usedAIFallback ?? false,
-                    isUpdating: viewModel.isUpdatingAssessment,
-                    lastUpdated: viewModel.latestAssessment?.timestamp,
-                    tips: viewModel.selectedTips,
-                    completedTipIDs: viewModel.completedTipIDs,
-                    onToggleTip: { viewModel.toggleTipCompletion($0) }
-                )
-
-                if let lastRefreshed = viewModel.lastRefreshedAt {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock")
-                            .font(.caption2)
-                        Text("Health data synced \(lastRefreshed.formatted(.relative(presentation: .named)))")
-                            .font(.caption2)
+                Picker("Section", selection: $dashboardSection) {
+                    ForEach(DashboardSection.allCases) { section in
+                        Text(section.title).tag(section)
                     }
-                    .foregroundStyle(NHSTheme.textSecondary)
                 }
+                .pickerStyle(.segmented)
 
-                DomainStatusCard(
-                    title: "Cardiovascular",
-                    subtitle: "Heart & circulation risk",
-                    color: NHSTheme.riskColor(for: profile.cardioRisk),
-                    icon: "heart.fill",
-                    action: { selectedDomain = .cardiovascular }
-                )
-
-                DomainStatusCard(
-                    title: "Mental Health",
-                    subtitle: "Mood & anxiety indicators",
-                    color: NHSTheme.mentalColor(for: profile.mentalHealth),
-                    icon: "brain.head.profile",
-                    action: { selectedDomain = .mental }
-                )
-
-                DomainStatusCard(
-                    title: "Metabolic",
-                    subtitle: "Diabetes & weight risk",
-                    color: NHSTheme.riskColor(for: profile.metabolic),
-                    icon: "figure.walk",
-                    action: { selectedDomain = .metabolic }
-                )
-
-                if !profile.correlations.isEmpty {
-                    correlationsCard
-                }
-
-                NHSResourcesCard(profile: profile)
-
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .nhsCard()
+                switch dashboardSection {
+                case .overview:
+                    overviewContent
+                case .trends:
+                    TrendsContentView()
                 }
             }
             .padding()
         }
         .refreshable {
             await runAssessmentIfNeeded(reason: .userRefresh)
+        }
+    }
+
+    private var overviewContent: some View {
+        Group {
+            PersonalizedSummaryCard(
+                quote: viewModel.motivationalQuote,
+                profile: profile,
+                summaryText: summaryText,
+                usedFallback: viewModel.latestSummary?.usedFallback ?? viewModel.latestAssessment?.usedAIFallback ?? false,
+                isUpdating: viewModel.isUpdatingAssessment,
+                lastUpdated: viewModel.latestAssessment?.timestamp,
+                tips: viewModel.selectedTips,
+                completedTipIDs: viewModel.completedTipIDs,
+                onToggleTip: { viewModel.toggleTipCompletion($0) }
+            )
+
+            BodyMapView(
+                profile: profile,
+                snapshot: viewModel.healthSnapshot ?? .empty,
+                onSelectQuestionnaire: { activeQuestionnaire = $0 }
+            )
+
+            if let lastRefreshed = viewModel.lastRefreshedAt {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.caption2)
+                    Text("Health data synced \(lastRefreshed.formatted(.relative(presentation: .named)))")
+                        .font(.caption2)
+                }
+                .foregroundStyle(NHSTheme.textSecondary)
+            }
+
+            DomainStatusCard(
+                title: "Cardiovascular",
+                subtitle: "Heart & circulation risk",
+                color: NHSTheme.riskColor(for: profile.cardioRisk),
+                icon: "heart.fill",
+                action: { selectedDomain = .cardiovascular }
+            )
+
+            DomainStatusCard(
+                title: "Mental Health",
+                subtitle: "Mood & anxiety indicators",
+                color: NHSTheme.mentalColor(for: profile.mentalHealth),
+                icon: "brain.head.profile",
+                action: { selectedDomain = .mental }
+            )
+
+            DomainStatusCard(
+                title: "Metabolic",
+                subtitle: "Diabetes & weight risk",
+                color: NHSTheme.riskColor(for: profile.metabolic),
+                icon: "figure.walk",
+                action: { selectedDomain = .metabolic }
+            )
+
+            if !profile.correlations.isEmpty {
+                correlationsCard
+            }
+
+            NHSResourcesCard(profile: profile)
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .nhsCard()
+            }
         }
     }
 
@@ -131,6 +179,10 @@ struct DashboardView: View {
         defer { viewModel.isUpdatingAssessment = false }
 
         await viewModel.refreshHealthKit()
+        if let snapshot = viewModel.healthSnapshot {
+            profile.syncMetabolicData(from: snapshot)
+            try? modelContext.save()
+        }
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profile,
             orchestrator: dependencies.orchestrator,
@@ -141,6 +193,11 @@ struct DashboardView: View {
     }
 
     private func runAssessmentIfNeeded(reason: AutoAssessmentReason) async {
+        await viewModel.refreshHealthKit()
+        if let profile = profiles.first, let snapshot = viewModel.healthSnapshot {
+            profile.syncMetabolicData(from: snapshot)
+            try? modelContext.save()
+        }
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profiles.first,
             orchestrator: dependencies.orchestrator,
@@ -159,8 +216,11 @@ struct DashboardView: View {
                 Text(correlationLabel(correlation))
                     .font(.subheadline)
                     .foregroundStyle(NHSTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .nhsCard()
     }
 

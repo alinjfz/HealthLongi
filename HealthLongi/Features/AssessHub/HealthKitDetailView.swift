@@ -148,6 +148,8 @@ struct HealthKitDetailView: View {
         case .steps: return Double(snapshot.averageDailySteps)
         case .restingHeartRate: return snapshot.averageRestingHeartRate
         case .sleep: return snapshot.averageSleepHours
+        case .bmi: return snapshot.bmi
+        case .exerciseMinutes: return snapshot.weeklyExerciseMinutes.map(Double.init)
         case .activeEnergy: return snapshot.activeEnergyBurned
         case .distance: return snapshot.distanceWalkingRunning
         case .hrv: return snapshot.heartRateVariability
@@ -164,7 +166,9 @@ struct HealthKitDetailView: View {
         switch metric {
         case .steps: return "\(Int(value))"
         case .restingHeartRate: return String(format: "%.0f", value)
-        case .sleep: return String(format: "%.1f", value)
+        case .sleep: return SleepDurationFormatting.format(hours: value)
+        case .bmi: return String(format: "%.1f", value)
+        case .exerciseMinutes: return String(format: "%.0f", value)
         case .activeEnergy: return String(format: "%.0f", value)
         case .distance: return String(format: "%.1f", value)
         case .hrv: return String(format: "%.0f", value)
@@ -197,6 +201,12 @@ struct HealthKitDetailView: View {
             return o >= 95 ? .green : (o >= 90 ? .orange : .red)
         case .bodyMass: return NHSTheme.primaryBlue
         case .height: return NHSTheme.primaryBlue
+        case .bmi:
+            guard let bmi = snapshot.bmi else { return NHSTheme.textPrimary }
+            return bmi < 25 ? .green : (bmi < 30 ? .orange : .red)
+        case .exerciseMinutes:
+            guard let minutes = snapshot.weeklyExerciseMinutes else { return NHSTheme.textPrimary }
+            return minutes >= 150 ? .green : (minutes >= 75 ? .orange : .red)
         case .bodyFat:
             guard let bf = snapshot.bodyFatPercentage else { return NHSTheme.textPrimary }
             return bf <= 24 ? .green : (bf <= 32 ? .orange : .red)
@@ -248,7 +258,9 @@ struct HealthKitDetailView: View {
         case .activeEnergy: return "Active: 400+ kcal/day"
         case .hrv: return "Higher is generally better; ≥40 ms is good"
         case .oxygenSaturation: return "Normal: 95–100%"
+        case .bmi: return "Healthy: 18.5–24.9 kg/m² (NHS)"
         case .bodyFat: return "Healthy range: 10–24% (varies by sex/age)"
+        case .exerciseMinutes: return "NHS target: 150+ minutes/week moderate activity"
         case .mindfulMinutes: return "Recommended: 10+ minutes/day"
         default: return nil
         }
@@ -261,7 +273,7 @@ struct HealthKitDetailView: View {
         case .restingHeartRate:
             return "Resting heart rate reflects cardiovascular fitness. A lower resting HR typically indicates better heart efficiency and fitness."
         case .sleep:
-            return "This is objective sleep time logged in Apple Health from your iPhone or Apple Watch — different from the subjective Sleep Quality Check-in questionnaire. Sleep duration is closely linked to mental health and metabolic regulation. The NHS recommends 7–9 hours for adults."
+            return "Sleep duration logged in Apple Health from your iPhone or Apple Watch. Sleep is closely linked to mental health and metabolic regulation. The NHS recommends 7–9 hours for adults."
         case .activeEnergy:
             return "Active energy measures calories burned through physical activity beyond your basal metabolic rate. Higher values indicate a more active lifestyle."
         case .distance:
@@ -274,6 +286,10 @@ struct HealthKitDetailView: View {
             return "Body weight is tracked from Apple Health. Combined with height, it's used to calculate BMI — a screening tool for metabolic risk."
         case .height:
             return "Height is used alongside weight to calculate your BMI. This value is fetched once from Apple Health."
+        case .bmi:
+            return "BMI is calculated from your latest weight and height in Apple Health. It is used as a metabolic risk screening input."
+        case .exerciseMinutes:
+            return "Exercise minutes are summed from Apple Health over the past 7 days. Regular activity supports metabolic and cardiovascular health."
         case .bodyFat:
             return "Body fat percentage provides a more accurate measure of body composition than BMI alone. It's tracked via compatible scales or Apple Watch."
         case .mindfulMinutes:
@@ -294,7 +310,9 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
     case oxygenSaturation
     case bodyMass
     case height
+    case bmi
     case bodyFat
+    case exerciseMinutes
     case mindfulMinutes
 
     var id: String { rawValue }
@@ -310,7 +328,9 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .oxygenSaturation: "Blood Oxygen"
         case .bodyMass: "Body Weight"
         case .height: "Height"
+        case .bmi: "BMI"
         case .bodyFat: "Body Fat"
+        case .exerciseMinutes: "Exercise Time"
         case .mindfulMinutes: "Mindful Minutes"
         }
     }
@@ -326,7 +346,9 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .oxygenSaturation: "Weekly average from Apple Health"
         case .bodyMass: "Latest from Apple Health"
         case .height: "Latest from Apple Health"
+        case .bmi: "Calculated from weight and height"
         case .bodyFat: "Latest from Apple Health"
+        case .exerciseMinutes: "Past 7 days from Apple Health"
         case .mindfulMinutes: "Weekly average from Apple Health"
         }
     }
@@ -342,7 +364,9 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .oxygenSaturation: "lungs.fill"
         case .bodyMass: "scalemass.fill"
         case .height: "ruler"
+        case .bmi: "figure.walk"
         case .bodyFat: "figure.scale"
+        case .exerciseMinutes: "figure.run"
         case .mindfulMinutes: "brain.head.profile"
         }
     }
@@ -358,7 +382,9 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .oxygenSaturation: "%"
         case .bodyMass: "kg"
         case .height: "cm"
+        case .bmi: "kg/m²"
         case .bodyFat: "%"
+        case .exerciseMinutes: "min/week"
         case .mindfulMinutes: "min/day"
         }
     }
@@ -369,14 +395,16 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         switch self {
         case .steps: return "\(snapshot.averageDailySteps)"
         case .restingHeartRate: return snapshot.averageRestingHeartRate.map { String(format: "%.0f", $0) } ?? "—"
-        case .sleep: return snapshot.averageSleepHours.map { String(format: "%.1f", $0) } ?? "—"
+        case .sleep: return snapshot.averageSleepHours.map { SleepDurationFormatting.format(hours: $0) } ?? "—"
         case .activeEnergy: return snapshot.activeEnergyBurned.map { String(format: "%.0f", $0) } ?? "—"
         case .distance: return snapshot.distanceWalkingRunning.map { String(format: "%.1f", $0) } ?? "—"
         case .hrv: return snapshot.heartRateVariability.map { String(format: "%.0f", $0) } ?? "—"
         case .oxygenSaturation: return snapshot.oxygenSaturation.map { String(format: "%.0f%%", $0) } ?? "—"
         case .bodyMass: return snapshot.bodyMass.map { String(format: "%.1f", $0) } ?? "—"
         case .height: return snapshot.height.map { String(format: "%.0f cm", $0 * 100) } ?? "—"
+        case .bmi: return snapshot.bmi.map { String(format: "%.1f", $0) } ?? "—"
         case .bodyFat: return snapshot.bodyFatPercentage.map { String(format: "%.1f%%", $0) } ?? "—"
+        case .exerciseMinutes: return snapshot.weeklyExerciseMinutes.map { "\($0)" } ?? "—"
         case .mindfulMinutes: return snapshot.mindfulMinutes.map { String(format: "%.0f", $0) } ?? "—"
         }
     }

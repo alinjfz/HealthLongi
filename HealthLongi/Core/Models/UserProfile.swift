@@ -44,6 +44,7 @@ final class UserProfile {
 
     @Attribute(.externalStorage) private var manualHealthDataJSON: Data?
     @Attribute(.externalStorage) private var labResultsData: Data?
+    @Attribute(.externalStorage) private var labImportHistoryData: Data?
     @Attribute(.externalStorage) private var geneticsProfileData: Data?
 
     // MARK: - Date of Birth (computed from age)
@@ -79,6 +80,16 @@ final class UserProfile {
             } else {
                 labResultsData = nil
             }
+        }
+    }
+
+    var labImportHistory: [LabImportRecord] {
+        get {
+            guard let labImportHistoryData else { return [] }
+            return (try? JSONDecoder().decode([LabImportRecord].self, from: labImportHistoryData)) ?? []
+        }
+        set {
+            labImportHistoryData = try? JSONEncoder().encode(newValue)
         }
     }
 
@@ -247,6 +258,16 @@ final class UserProfile {
         }
     }
 
+    /// Syncs metabolic fields from a HealthKit weekly snapshot for risk scoring.
+    func syncMetabolicData(from snapshot: WeeklyHealthSnapshot) {
+        bmi = snapshot.bmi
+        weightKg = snapshot.bodyMass
+        if let heightMetres = snapshot.height {
+            heightCm = heightMetres * 100
+        }
+        physicalActivityMinutes = snapshot.weeklyExerciseMinutes
+    }
+
     /// Backfill completion flags for profiles saved before flags were introduced.
     func migrateLegacyQuestionnaireCompletionIfNeeded() {
         let fallbackDate = createdAt
@@ -271,6 +292,18 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
     case phq15
 
     var id: String { rawValue }
+
+    /// Questionnaires shown in the Assess hub (excludes deprecated sleep check-in).
+    static var activeCases: [QuestionnaireKind] {
+        allCases.filter { $0.isActive }
+    }
+
+    var isActive: Bool {
+        switch self {
+        case .sleep: false
+        default: true
+        }
+    }
 
     var title: String {
         switch self {
@@ -364,23 +397,115 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Extra context shown above AUDIT-C questions.
-    var contextSections: [(title: String, body: String)]? {
-        guard self == .auditC else { return nil }
-        return [
-            (
-                "What is AUDIT-C?",
-                "A short 3-question alcohol screen used in GP surgeries. It helps identify drinking patterns that may affect your health."
-            ),
-            (
-                "What counts as a standard drink?",
-                "In the UK, one unit is about 8g of alcohol — roughly half a pint of beer, a small glass of wine, or a single measure of spirits."
-            ),
-            (
-                "Your privacy",
-                "Answers stay on your device and are never sent to AI or external services."
-            )
-        ]
+    /// Extra context shown above questions in the "About this screening" card.
+    var contextSections: [(title: String, body: String)] {
+        switch self {
+        case .phq9:
+            [
+                (
+                    "What is PHQ-9?",
+                    "A 9-question mood screen used in GP surgeries. It helps spot symptoms of depression over the past two weeks."
+                ),
+                (
+                    "How to answer",
+                    "Think about how often you have felt this way — not how you think you should feel. There are no wrong answers."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        case .gad7:
+            [
+                (
+                    "What is GAD-7?",
+                    "A 7-question anxiety screen used in primary care. It measures worry and nervousness over the past two weeks."
+                ),
+                (
+                    "When to seek help",
+                    "Higher scores may suggest it is worth talking to your GP or self-referring to NHS Talking Therapies. This is not a diagnosis."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        case .who5:
+            [
+                (
+                    "What is WHO-5?",
+                    "A 5-question wellbeing index from the World Health Organization. It focuses on positive mood and energy."
+                ),
+                (
+                    "How to answer",
+                    "Rate how often you felt cheerful, calm, active, and rested over the past two weeks."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        case .pss10:
+            [
+                (
+                    "What is PSS-10?",
+                    "The Perceived Stress Scale measures how unpredictable and overwhelming life has felt in the last month."
+                ),
+                (
+                    "Reverse-scored items",
+                    "Some questions ask about positive coping (e.g. feeling in control). Those are scored differently — just answer honestly."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        case .sleep:
+            []
+        case .auditC:
+            [
+                (
+                    "What is AUDIT-C?",
+                    "A short 3-question alcohol screen used in GP surgeries. It helps identify drinking patterns that may affect your health."
+                ),
+                (
+                    "What counts as a standard drink?",
+                    "In the UK, one unit is about 8g of alcohol — roughly half a pint of beer, a small glass of wine, or a single measure of spirits."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        case .phq15:
+            [
+                (
+                    "What is PHQ-15?",
+                    "A 15-question screen for physical symptoms such as pain, fatigue, and digestive issues over the past four weeks."
+                ),
+                (
+                    "How to answer",
+                    "Rate how much each symptom has bothered you. It helps connect physical feelings with overall wellbeing."
+                ),
+                (
+                    "Your privacy",
+                    "Answers stay on your device and are never sent to AI or external services."
+                )
+            ]
+        }
+    }
+
+    var screeningNHSLink: (title: String, url: URL)? {
+        switch self {
+        case .phq9, .gad7:
+            ("NHS mental health support", URL(string: "https://www.nhs.uk/mental-health/")!)
+        case .auditC:
+            ("NHS alcohol advice", Self.auditCNHSAlcoholURL)
+        case .who5, .pss10, .phq15:
+            ("NHS Every Mind Matters", URL(string: "https://www.nhs.uk/every-mind-matters/")!)
+        case .sleep:
+            nil
+        }
     }
 
     /// Per-question footnotes (index → text).

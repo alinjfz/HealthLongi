@@ -44,12 +44,6 @@ struct RootView: View {
                 }
                 .tag(AppTab.assess)
 
-            TrendsView()
-                .tabItem {
-                    Label("Trends", systemImage: "chart.xyaxis.line")
-                }
-                .tag(AppTab.trends)
-
             ProfileSummaryView()
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle.fill")

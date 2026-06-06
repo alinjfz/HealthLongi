@@ -14,9 +14,13 @@ struct LabDataInputView: View {
     @State private var importErrorMessage: String?
     @State private var isImporting = false
     @State private var selectedPhoto: PhotosPickerItem?
-    @State private var showPDFImporter = false
+    @State private var showFileImporter = false
     @State private var parsedForReview: [LabReportOCRService.ParsedValue]?
     @State private var showReviewSheet = false
+    @State private var pendingImportFilename: String?
+    @State private var pendingImportText: String?
+    @State private var lastImportedLabels: [String] = []
+    @State private var expandedHistoryIDs: Set<UUID> = []
 
     var body: some View {
         NavigationStack {
@@ -32,9 +36,9 @@ struct LabDataInputView: View {
                     .disabled(isImporting)
 
                     Button {
-                        showPDFImporter = true
+                        showFileImporter = true
                     } label: {
-                        Label("Upload PDF report", systemImage: "doc.fill")
+                        Label("Upload report file", systemImage: "doc.fill")
                     }
                     .disabled(isImporting)
 
@@ -55,8 +59,63 @@ struct LabDataInputView: View {
                 } header: {
                     Text("Import")
                 } footer: {
-                    Text("Photos and PDFs are processed on your device using OCR. Nothing is uploaded.")
+                    Text("Photos, PDFs, and text files are processed on your device. Nothing is uploaded.")
                         .font(.caption2)
+                }
+
+                if !lastImportedLabels.isEmpty {
+                    Section {
+                        ForEach(lastImportedLabels, id: \.self) { label in
+                            Label(label, systemImage: "checkmark.circle.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(NHSTheme.textPrimary)
+                        }
+                    } header: {
+                        Text("Last import findings")
+                    }
+                }
+
+                if !profile.labImportHistory.isEmpty {
+                    Section {
+                        ForEach(profile.labImportHistory.sorted(by: { $0.importedAt > $1.importedAt })) { record in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(record.sourceFilename ?? "Imported report")
+                                            .font(.subheadline.weight(.medium))
+                                        Text(record.importedAt.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption)
+                                            .foregroundStyle(NHSTheme.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text("\(record.biomarkerCount) found")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(NHSTheme.primaryBlue)
+                                }
+
+                                if expandedHistoryIDs.contains(record.id) {
+                                    ForEach(record.biomarkerLabels, id: \.self) { label in
+                                        Text(label)
+                                            .font(.caption)
+                                            .foregroundStyle(NHSTheme.textSecondary)
+                                    }
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if expandedHistoryIDs.contains(record.id) {
+                                    expandedHistoryIDs.remove(record.id)
+                                } else {
+                                    expandedHistoryIDs.insert(record.id)
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Import history")
+                    } footer: {
+                        Text("Tap an entry to expand biomarkers found.")
+                            .font(.caption2)
+                    }
                 }
 
                 Section {
@@ -112,14 +171,14 @@ struct LabDataInputView: View {
                 Task { await importPhoto(newItem) }
             }
             .fileImporter(
-                isPresented: $showPDFImporter,
-                allowedContentTypes: [.pdf],
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.pdf, .plainText, .text],
                 allowsMultipleSelection: false
             ) { result in
                 switch result {
                 case .success(let urls):
                     guard let url = urls.first else { return }
-                    importPDF(url)
+                    importFile(url)
                 case .failure(let error):
                     importErrorMessage = error.localizedDescription
                 }
@@ -148,12 +207,16 @@ struct LabDataInputView: View {
                 fieldTexts[marker] = value
             }
         }
+        if let latest = profile.labImportHistory.sorted(by: { $0.importedAt > $1.importedAt }).first {
+            lastImportedLabels = latest.biomarkerLabels
+        }
     }
 
     @MainActor
     private func importPhoto(_ item: PhotosPickerItem) async {
         isImporting = true
         importErrorMessage = nil
+        pendingImportFilename = "Photo scan"
         defer {
             isImporting = false
             selectedPhoto = nil
@@ -166,19 +229,22 @@ struct LabDataInputView: View {
                 return
             }
             let text = try await LabReportImportService.recognizeText(from: image)
+            pendingImportText = text
             presentParsed(LabReportImportService.parseImportedText(text))
         } catch {
             importErrorMessage = error.localizedDescription
         }
     }
 
-    private func importPDF(_ url: URL) {
+    private func importFile(_ url: URL) {
         isImporting = true
         importErrorMessage = nil
+        pendingImportFilename = url.lastPathComponent
         defer { isImporting = false }
 
         do {
             let text = try LabReportImportService.extractText(from: url)
+            pendingImportText = text
             presentParsed(LabReportImportService.parseImportedText(text))
         } catch {
             importErrorMessage = error.localizedDescription
@@ -187,9 +253,10 @@ struct LabDataInputView: View {
 
     private func presentParsed(_ values: [LabReportOCRService.ParsedValue]) {
         if values.isEmpty {
-            importErrorMessage = "No recognised biomarkers found. Try a clearer photo or enter values manually."
+            importErrorMessage = "No recognised biomarkers found. Try a clearer file or enter values manually."
             return
         }
+        lastImportedLabels = values.map { label(for: $0) }
         parsedForReview = values
         showReviewSheet = true
     }
@@ -202,7 +269,15 @@ struct LabDataInputView: View {
                 fieldTexts[item.marker] = String(format: "%.2f", item.value)
             }
         }
+        lastImportedLabels = values.map { label(for: $0) }
         importErrorMessage = nil
+    }
+
+    private func label(for item: LabReportOCRService.ParsedValue) -> String {
+        let formatted = item.marker.isIntegerField
+            ? "\(Int(item.value))"
+            : String(format: "%.2f", item.value)
+        return "\(item.marker.label) \(formatted) \(item.marker.unit)"
     }
 
     private func save() {
@@ -234,6 +309,16 @@ struct LabDataInputView: View {
         if !hasValue {
             errorMessage = "Enter at least one lab value to save."
             return
+        }
+
+        if !lastImportedLabels.isEmpty {
+            let record = LabImportRecord(
+                sourceFilename: pendingImportFilename,
+                biomarkerCount: lastImportedLabels.count,
+                biomarkerLabels: lastImportedLabels,
+                reportDate: pendingImportText.flatMap { LabReportImportService.parseReportDate(from: $0) }
+            )
+            profile.labImportHistory.insert(record, at: 0)
         }
 
         labs.lastUpdated = .now

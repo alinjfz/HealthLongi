@@ -20,6 +20,7 @@ struct WeeklyHealthSnapshot: Sendable, Equatable {
     var bodyMass: Double?                 // kg
     var height: Double?                   // metres
     var bodyFatPercentage: Double?        // %
+    var weeklyExerciseMinutes: Int?       // total minutes in the past 7 days
 
     // Mindfulness
     var mindfulMinutes: Double?           // min/day average
@@ -47,6 +48,7 @@ struct WeeklyHealthSnapshot: Sendable, Equatable {
         bodyMass: nil,
         height: nil,
         bodyFatPercentage: nil,
+        weeklyExerciseMinutes: nil,
         mindfulMinutes: nil,
         fetchedAt: .now
     )

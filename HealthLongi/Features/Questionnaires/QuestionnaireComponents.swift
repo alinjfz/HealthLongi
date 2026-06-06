@@ -128,8 +128,8 @@ struct GenericLikertQuestionnaireView: View {
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
 
-            if let sections = kind.contextSections {
-                AuditCContextCard(sections: sections)
+            if !kind.contextSections.isEmpty {
+                ScreeningContextCard(sections: kind.contextSections, nhsLink: kind.screeningNHSLink)
             }
 
             ForEach(kind.humanizedQuestions.indices, id: \.self) { index in
@@ -178,8 +178,9 @@ struct GenericLikertQuestionnaireView: View {
     }
 }
 
-private struct AuditCContextCard: View {
+struct ScreeningContextCard: View {
     let sections: [(title: String, body: String)]
+    var nhsLink: (title: String, url: URL)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -199,9 +200,11 @@ private struct AuditCContextCard: View {
                 }
             }
 
-            Link(destination: QuestionnaireKind.auditCNHSAlcoholURL) {
-                Label("NHS alcohol advice", systemImage: "arrow.up.right.square")
-                    .font(.caption.weight(.medium))
+            if let nhsLink {
+                Link(destination: nhsLink.url) {
+                    Label(nhsLink.title, systemImage: "arrow.up.right.square")
+                        .font(.caption.weight(.medium))
+                }
             }
         }
         .nhsCard()
