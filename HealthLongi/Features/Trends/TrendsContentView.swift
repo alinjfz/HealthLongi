@@ -49,9 +49,9 @@ struct TrendsContentView: View {
                     HealthMetricChart(metric: viewModel.selectedMetric, dataPoints: viewModel.dataPoints)
                 }
 
-                Text("Trends are built from Apple Health on your device. Raw values are never sent to AI.")
-                    .font(.caption)
-                    .foregroundStyle(NHSTheme.textSecondary)
+                // Text("Trends are built from Apple Health on your device. Raw values are never sent to AI.")
+                //     .font(.caption)
+                //     .foregroundStyle(NHSTheme.textSecondary)
             }
         }
         .task {

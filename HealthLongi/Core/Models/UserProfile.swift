@@ -416,10 +416,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "How to answer",
                     "Think about how often you have felt this way — not how you think you should feel. There are no wrong answers."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         case .gad7:
             [
@@ -431,10 +431,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "When to seek help",
                     "Higher scores may suggest it is worth talking to your GP or self-referring to NHS Talking Therapies. This is not a diagnosis."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         case .who5:
             [
@@ -446,10 +446,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "How to answer",
                     "Rate how often you felt cheerful, calm, active, and rested over the past two weeks."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         case .pss10:
             [
@@ -461,10 +461,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "Reverse-scored items",
                     "Some questions ask about positive coping (e.g. feeling in control). Those are scored differently — just answer honestly."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         case .sleep:
             []
@@ -478,10 +478,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "What counts as a standard drink?",
                     "In the UK, one unit is about 8g of alcohol — roughly half a pint of beer, a small glass of wine, or a single measure of spirits."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         case .phq15:
             [
@@ -493,10 +493,10 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
                     "How to answer",
                     "Rate how much each symptom has bothered you. It helps connect physical feelings with overall wellbeing."
                 ),
-                (
-                    "Your privacy",
-                    "Answers stay on your device and are never sent to AI or external services."
-                )
+                // (
+                //     "Your privacy",
+                //     "Answers stay on your device and are never sent to AI or external services."
+                // )
             ]
         }
     }

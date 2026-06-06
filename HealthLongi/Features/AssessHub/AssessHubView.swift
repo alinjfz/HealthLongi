@@ -118,7 +118,7 @@ struct AssessHubView: View {
             Text("Health Assessments")
                 .font(.title2.bold())
                 .foregroundStyle(NHSTheme.primaryBlue)
-            Text("Complete assessments at your own pace. All data stays on your device.")
+            Text("Complete assessments at your own pace.")
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
         }
