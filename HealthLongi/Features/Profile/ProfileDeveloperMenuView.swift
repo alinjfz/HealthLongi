@@ -67,7 +67,7 @@ struct ProfileDeveloperMenuView: View {
                 .foregroundStyle(NHSTheme.primaryBlue)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("Loads profile, questionnaire scores, and all HealthKit metrics used by the app into Apple Health.")
+            Text("Loads profile, questionnaire scores, sample lab results, and all HealthKit metrics used by the app into Apple Health.")
                 .font(.caption)
                 .foregroundStyle(NHSTheme.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

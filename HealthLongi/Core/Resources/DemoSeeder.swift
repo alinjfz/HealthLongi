@@ -36,6 +36,20 @@ enum DemoSeeder {
         profile.weightKg = scenario.weightKg
         profile.heightCm = scenario.heightMetres * 100
         profile.physicalActivityMinutes = scenario.weeklyExerciseMinutes
+        profile.labResults = scenario.sampleLabResults
+        profile.labImportHistory = [
+            LabImportRecord(
+                sourceFilename: "Demo — \(scenario.title).pdf",
+                biomarkerCount: scenario.sampleLabResults.hasAnyValue ? 20 : 0,
+                biomarkerLabels: [
+                    "Total cholesterol", "LDL cholesterol", "HDL cholesterol", "Triglycerides",
+                    "Fasting glucose", "HbA1c", "Systolic BP", "Diastolic BP",
+                    "AST", "ALT", "TSH", "Free T4", "Vitamin D", "Vitamin B12",
+                    "Folate", "eGFR", "Creatinine", "ESR", "hsCRP", "Waist circumference"
+                ],
+                reportDate: .now
+            )
+        ]
 
         try? context.save()
 
@@ -64,7 +78,7 @@ enum DemoSeeder {
         return SeedResult(
             scenarioTitle: scenario.title,
             healthKitMessage: """
-            Profile and Apple Health data loaded. \(verification)
+            Profile, sample lab results, and Apple Health data loaded. \(verification)
             If Assess still looks empty, open Settings → Health → Data Access and enable all read permissions for this app.
             """
         )
