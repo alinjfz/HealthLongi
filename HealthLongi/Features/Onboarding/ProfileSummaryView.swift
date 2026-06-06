@@ -15,15 +15,6 @@ struct ProfileSummaryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let profile = profiles.first {
-                        ProfileHeaderCard(
-                            profile: profile,
-                            healthKitAvailable: viewModel.healthKitAvailable,
-                            lastSynced: viewModel.lastSynced,
-                            isLoading: viewModel.isLoading
-                        )
-
-                        assessmentsCard(profile)
-
                         ForEach(viewModel.groups) { group in
                             ProfileHealthSectionCard(group: group) { metric in
                                 handleMetricTap(metric)
@@ -104,27 +95,6 @@ struct ProfileSummaryView: View {
         .background(NHSTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
-    }
-
-    private func assessmentsCard(_ profile: UserProfile) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Completed Assessments")
-                .font(.headline)
-                .foregroundStyle(NHSTheme.primaryBlue)
-
-            ForEach(QuestionnaireKind.allCases) { kind in
-                if profile.isComplete(kind), let date = profile.completedAt(kind) {
-                    LabeledContent(kind.title, value: date.formatted(date: .abbreviated, time: .omitted))
-                }
-            }
-
-            if !QuestionnaireKind.allCases.contains(where: { profile.isComplete($0) }) {
-                Text("No check-ins completed yet.")
-                    .font(.subheadline)
-                    .foregroundStyle(NHSTheme.textSecondary)
-            }
-        }
-        .nhsCard()
     }
 
     private func refreshProfile() async {

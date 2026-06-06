@@ -121,15 +121,21 @@ final class ProfileHealthViewModel {
         manual: ManualHealthData?
     ) -> (value: String, source: HealthMetricSource) {
         if let dob = demographics.dateOfBirth {
-            return (dob.formatted(date: .abbreviated, time: .omitted), .healthKit)
+            return (formattedDateOfBirth(dob), .healthKit)
         }
         if let dob = manual?.dateOfBirth {
-            return (dob.formatted(date: .abbreviated, time: .omitted), .manual)
+            return (formattedDateOfBirth(dob), .manual)
         }
         if profile.onboardingComplete {
-            return (profile.dateOfBirth.formatted(date: .abbreviated, time: .omitted), .manual)
+            return (formattedDateOfBirth(profile.dateOfBirth), .manual)
         }
         return ("—", .unavailable)
+    }
+
+    private static func formattedDateOfBirth(_ date: Date) -> String {
+        let formatted = date.formatted(date: .abbreviated, time: .omitted)
+        let years = Calendar.current.dateComponents([.year], from: date, to: .now).year ?? 0
+        return "\(formatted) (\(years))"
     }
 
     private static func resolveSex(
