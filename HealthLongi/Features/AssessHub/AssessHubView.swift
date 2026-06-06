@@ -2,11 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct AssessHubView: View {
+    @Environment(\.appDependencies) private var dependencies
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
 
     @State private var viewModel = AssessmentHubViewModel(profile: nil)
     @State private var activeSheet: AssessSheet?
+    @State private var selectedHealthMetric: HealthKitMetric?
+    @State private var healthSnapshot: WeeklyHealthSnapshot = .empty
 
     private var profile: UserProfile? { profiles.first }
 
@@ -41,7 +44,7 @@ struct AssessHubView: View {
                     sectionHeader("Lab & Calculators")
                     AssessmentCard(
                         title: "Lab Results",
-                        subtitle: "Cholesterol, BP, blood sugar, HbA1c",
+                        subtitle: "Cholesterol, BP, blood sugar, HbA1c & more",
                         icon: "cross.vial.fill",
                         isCompleted: viewModel.labDataCompleted
                     ) {
@@ -56,27 +59,18 @@ struct AssessHubView: View {
                     ) { activeSheet = .bmiCalculator }
 
                     sectionHeader("HealthKit Data")
-                    healthKitCard(
-                        title: "Daily Steps",
-                        subtitle: "Weekly average from Apple Health",
-                        icon: "figure.walk"
-                    )
-                    healthKitCard(
-                        title: "Resting Heart Rate",
-                        subtitle: "Weekly average from Apple Health",
-                        icon: "heart.fill"
-                    )
-                    healthKitCard(
-                        title: "Sleep",
-                        subtitle: "Average hours from Apple Health",
-                        icon: "bed.double.fill"
-                    )
+                    ForEach(HealthKitMetric.allCases) { metric in
+                        healthKitCard(metric: metric)
+                    }
                 }
                 .padding()
             }
             .background(NHSTheme.background)
             .navigationTitle("Assess")
-            .onAppear { refreshViewModel() }
+            .onAppear {
+                refreshViewModel()
+                Task { await refreshHealthKit() }
+            }
             .onChange(of: profiles.first?.phq9Score) { refreshViewModel() }
             .onChange(of: profiles.first?.gad7Score) { refreshViewModel() }
             .onChange(of: profiles.first?.bmi) { refreshViewModel() }
@@ -101,6 +95,9 @@ struct AssessHubView: View {
                     BMICalculatorView()
                 }
             }
+            .sheet(item: $selectedHealthMetric) { metric in
+                HealthKitDetailView(metric: metric, snapshot: healthSnapshot)
+            }
         }
     }
 
@@ -122,34 +119,53 @@ struct AssessHubView: View {
             .padding(.top, 4)
     }
 
-    private func healthKitCard(title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(NHSTheme.primaryBlue)
-                .frame(width: 44, height: 44)
-                .background(NHSTheme.primaryBlue.opacity(0.12))
-                .clipShape(Circle())
+    private func healthKitCard(metric: HealthKitMetric) -> some View {
+        Button {
+            selectedHealthMetric = metric
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: metric.icon)
+                    .font(.title2)
+                    .foregroundStyle(NHSTheme.primaryBlue)
+                    .frame(width: 44, height: 44)
+                    .background(NHSTheme.primaryBlue.opacity(0.12))
+                    .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(NHSTheme.textPrimary)
-                Text(subtitle)
-                    .font(.caption)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(metric.title)
+                        .font(.headline)
+                        .foregroundStyle(NHSTheme.textPrimary)
+                    Text(metric.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Text(metric.shortDisplay(from: healthSnapshot))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NHSTheme.primaryBlue)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(NHSTheme.textSecondary)
             }
-
-            Spacer()
-
-            Image(systemName: "applewatch")
-                .foregroundStyle(NHSTheme.textSecondary)
+            .nhsCard()
         }
-        .nhsCard()
+        .buttonStyle(.plain)
     }
 
     private func refreshViewModel() {
         viewModel = AssessmentHubViewModel(profile: profile)
+    }
+
+    private func refreshHealthKit() async {
+        do {
+            try await dependencies.healthDataProvider.requestAuthorization()
+            healthSnapshot = try await dependencies.healthDataProvider.fetchWeeklySnapshot()
+        } catch {
+            healthSnapshot = .empty
+        }
     }
 }
 
@@ -300,5 +316,6 @@ private struct MetabolicSheetView: View {
 
 #Preview {
     AssessHubView()
+        .environment(\.appDependencies, .preview())
         .modelContainer(for: UserProfile.self, inMemory: true)
 }

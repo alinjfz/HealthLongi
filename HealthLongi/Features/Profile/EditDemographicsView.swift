@@ -6,7 +6,7 @@ struct EditDemographicsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var profile: UserProfile
 
-    @State private var ageText = ""
+    @State private var dateOfBirth = Date()
     @State private var sex: Sex = .female
     @State private var smokingStatus: SmokingStatus = .never
     @State private var smokingFrequency = ""
@@ -18,7 +18,7 @@ struct EditDemographicsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    ageSection
+                    dateOfBirthSection
                     sexSection
                     smokingSection
 
@@ -45,16 +45,24 @@ struct EditDemographicsView: View {
         }
     }
 
-    private var ageSection: some View {
+    private var dateOfBirthSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Age")
+            Text("Date of Birth")
                 .font(.headline)
-            HStack {
-                TextField("Enter your age", text: $ageText)
-                    .keyboardType(.numberPad)
-                Text("years")
-                    .foregroundStyle(NHSTheme.textSecondary)
-            }
+                .foregroundStyle(NHSTheme.textPrimary)
+
+            DatePicker(
+                "Date of Birth",
+                selection: $dateOfBirth,
+                in: ...Date.now,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .labelsHidden()
+
+            Text("Age: \(ageFromDOB)")
+                .font(.subheadline)
+                .foregroundStyle(NHSTheme.textSecondary)
         }
         .nhsCard()
     }
@@ -63,12 +71,32 @@ struct EditDemographicsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sex at birth")
                 .font(.headline)
-            Picker("Sex at birth", selection: $sex) {
-                ForEach(Sex.allCases, id: \.self) { option in
-                    Text(option.displayName).tag(option)
+                .foregroundStyle(NHSTheme.textPrimary)
+
+            HStack(spacing: 12) {
+                ForEach(Sex.allCases) { option in
+                    Button {
+                        sex = option
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: sex == option ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(sex == option ? NHSTheme.primaryBlue : NHSTheme.textSecondary)
+                            Text(option.displayName)
+                                .foregroundStyle(NHSTheme.textPrimary)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                        .background(sex == option ? NHSTheme.lightBlue : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(sex == option ? NHSTheme.primaryBlue : NHSTheme.textSecondary.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .pickerStyle(.menu)
 
             Toggle("I identify differently from sex at birth", isOn: $showGenderIdentity)
 
@@ -83,6 +111,7 @@ struct EditDemographicsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Smoking status")
                 .font(.headline)
+                .foregroundStyle(NHSTheme.textPrimary)
             Picker("Smoking", selection: $smokingStatus) {
                 ForEach(SmokingStatus.allCases, id: \.self) { option in
                     Text(option.displayName).tag(option)
@@ -98,8 +127,12 @@ struct EditDemographicsView: View {
         .nhsCard()
     }
 
+    private var ageFromDOB: Int {
+        Calendar.current.dateComponents([.year], from: dateOfBirth, to: .now).year ?? 0
+    }
+
     private func loadValues() {
-        ageText = "\(profile.age)"
+        dateOfBirth = profile.dateOfBirth
         sex = profile.sex
         smokingStatus = profile.smokingStatus
         smokingFrequency = profile.smokingFrequency ?? ""
@@ -108,13 +141,13 @@ struct EditDemographicsView: View {
     }
 
     private func save() {
-        guard let age = Int(ageText.trimmingCharacters(in: .whitespaces)),
-              (18...100).contains(age) else {
-            errorMessage = "Please enter a valid age between 18 and 100."
+        let age = ageFromDOB
+        guard (18...100).contains(age) else {
+            errorMessage = "Age must be between 18 and 100."
             return
         }
 
-        profile.age = age
+        profile.dateOfBirth = dateOfBirth
         profile.sex = sex
         profile.smokingStatus = smokingStatus
         profile.smokingFrequency = smokingStatus.hasFrequency ? smokingFrequency.nilIfEmpty : nil

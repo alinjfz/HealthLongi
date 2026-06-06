@@ -88,21 +88,11 @@ struct DomainDetailView: View {
     }
 
     private var domainHeaderCard: some View {
-        HStack(spacing: 12) {
-            DomainStatusCard(
-                title: domain.title,
-                subtitle: domain.subtitle,
-                color: indicatorColor,
-                icon: domain.icon
-            )
-
-            Button {
-                showDataSourceInfo = true
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(.title3)
-                    .foregroundStyle(NHSTheme.primaryBlue)
-            }
-        }
+        DomainStatusCard(
+            title: domain.title,
+            subtitle: domain.subtitle,
+            color: indicatorColor,
+            icon: domain.icon
+        )
     }
 }

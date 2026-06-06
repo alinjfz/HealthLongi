@@ -13,7 +13,7 @@ enum DemoSeeder {
             context.insert(profile)
         }
 
-        profile.age = 32
+        profile.dateOfBirth = Calendar.current.date(byAdding: .year, value: -32, to: .now) ?? .now
         profile.sex = .female
         profile.smokingStatus = .never
         profile.onboardingComplete = true

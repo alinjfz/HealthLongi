@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class UserProfile {
+    /// Stored as integer age for SwiftData backward compatibility.
+    /// Use `dateOfBirth` for the Date representation.
     var age: Int
     var sexRaw: String
     var smokingStatusRaw: String
@@ -18,8 +20,20 @@ final class UserProfile {
 
     @Attribute(.externalStorage) private var labResultsData: Data?
 
+    // MARK: - Date of Birth (computed from age)
+
+    var dateOfBirth: Date {
+        get { Calendar.current.date(byAdding: .year, value: -age, to: .now) ?? .now }
+        set {
+            let years = Calendar.current.dateComponents([.year], from: newValue, to: .now).year ?? age
+            age = max(0, years)
+        }
+    }
+
+    // MARK: - Enum Accessors
+
     var sex: Sex {
-        get { Sex(rawValue: sexRaw) ?? .other }
+        get { Sex(rawValue: sexRaw) ?? .female }
         set { sexRaw = newValue.rawValue }
     }
 
@@ -42,9 +56,11 @@ final class UserProfile {
         }
     }
 
+    // MARK: - Init
+
     init(
-        age: Int = 30,
-        sex: Sex = .other,
+        dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -30, to: .now) ?? .now,
+        sex: Sex = .female,
         smokingStatus: SmokingStatus = .never,
         smokingFrequency: String? = nil,
         genderIdentity: String? = nil,
@@ -56,7 +72,8 @@ final class UserProfile {
         physicalActivityMinutes: Int? = nil,
         labResults: LabResults? = nil
     ) {
-        self.age = age
+        let years = Calendar.current.dateComponents([.year], from: dateOfBirth, to: .now).year ?? 30
+        self.age = max(0, years)
         self.sexRaw = sex.rawValue
         self.smokingStatusRaw = smokingStatus.rawValue
         self.smokingFrequency = smokingFrequency

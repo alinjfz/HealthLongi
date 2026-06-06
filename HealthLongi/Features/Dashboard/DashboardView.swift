@@ -42,6 +42,12 @@ struct DashboardView: View {
             .onChange(of: assessments.count) {
                 viewModel.loadLatest(from: assessments)
             }
+            .onChange(of: profiles.first?.phq9Score) {
+                viewModel.markQuestionnaireDataUpdated()
+            }
+            .onChange(of: profiles.first?.gad7Score) {
+                viewModel.markQuestionnaireDataUpdated()
+            }
             .sheet(isPresented: $showResults) {
                 if let assessment = viewModel.latestAssessment {
                     ResultsView(
@@ -63,6 +69,7 @@ struct DashboardView: View {
     private var dashboardContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                // Personalized summary always at the top
                 PersonalizedSummaryCard(
                     quote: viewModel.motivationalQuote,
                     summaryText: summaryText,
@@ -71,6 +78,18 @@ struct DashboardView: View {
                     onToggleTip: { viewModel.toggleTipCompletion($0) }
                 )
 
+                // Last refreshed indicator
+                if let lastRefreshed = viewModel.lastRefreshedAt {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text("Health data synced \(lastRefreshed.formatted(.relative(presentation: .named)))")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(NHSTheme.textSecondary)
+                }
+
+                // Domain status cards
                 DomainStatusCard(
                     title: "Cardiovascular",
                     subtitle: "Heart & circulation risk",
@@ -99,16 +118,14 @@ struct DashboardView: View {
                     correlationsCard
                 }
 
-                NHSResourcesCard(profile: profile)
-
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .nhsCard()
-                }
-
-                Button("Run Assessment") {
+                // Gamified Assessment CTA
+                let readiness = viewModel.readinessProgress(for: profiles.first)
+                AssessmentCTACard(
+                    profile: profiles.first,
+                    readiness: readiness,
+                    hasNewData: viewModel.hasNewHealthData || viewModel.hasNewQuestionnaireData,
+                    isLoading: viewModel.isLoading
+                ) {
                     Task {
                         await viewModel.runAssessment(
                             profile: profiles.first,
@@ -120,9 +137,20 @@ struct DashboardView: View {
                         }
                     }
                 }
-                .buttonStyle(NHSPrimaryButtonStyle())
+
+                NHSResourcesCard(profile: profile)
+
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .nhsCard()
+                }
             }
             .padding()
+        }
+        .refreshable {
+            await viewModel.refreshHealthKit()
         }
     }
 

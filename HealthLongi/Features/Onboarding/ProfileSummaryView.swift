@@ -57,6 +57,7 @@ struct ProfileSummaryView: View {
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
 
+            LabeledContent("Date of Birth", value: profile.dateOfBirth.formatted(date: .abbreviated, time: .omitted))
             LabeledContent("Age", value: "\(profile.age)")
             LabeledContent("Sex at birth", value: profile.sex.displayName)
             if let identity = profile.genderIdentity, !identity.isEmpty {

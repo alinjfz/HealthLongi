@@ -1,15 +1,15 @@
 import Foundation
 
-enum Sex: String, Codable, CaseIterable, Sendable {
+enum Sex: String, Codable, CaseIterable, Sendable, Identifiable {
     case male
     case female
-    case other
+
+    var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .male: "Male"
         case .female: "Female"
-        case .other: "Other"
         }
     }
 }
