@@ -47,6 +47,7 @@ final class UserProfile {
     @Attribute(.externalStorage) private var labResultsHistoryData: Data?
     @Attribute(.externalStorage) private var labImportHistoryData: Data?
     @Attribute(.externalStorage) private var geneticsProfileData: Data?
+    @Attribute(.externalStorage) private var personalHealthContextData: Data?
 
     // MARK: - Date of Birth (computed from age)
 
@@ -138,6 +139,20 @@ final class UserProfile {
                 geneticsProfileData = try? JSONEncoder().encode(newValue)
             } else {
                 geneticsProfileData = nil
+            }
+        }
+    }
+
+    var personalHealthContext: PersonalHealthContext? {
+        get {
+            guard let personalHealthContextData else { return nil }
+            return try? JSONDecoder().decode(PersonalHealthContext.self, from: personalHealthContextData)
+        }
+        set {
+            if let newValue {
+                personalHealthContextData = try? JSONEncoder().encode(newValue)
+            } else {
+                personalHealthContextData = nil
             }
         }
     }
@@ -303,7 +318,7 @@ final class UserProfile {
     }
 }
 
-enum QuestionnaireKind: String, CaseIterable, Identifiable {
+enum QuestionnaireKind: String, CaseIterable, Identifiable, Codable {
     case phq9
     case gad7
     case who5

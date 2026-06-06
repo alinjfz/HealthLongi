@@ -85,13 +85,8 @@ final class DashboardViewModel {
         }
 
         let snapshot = healthSnapshot ?? .empty
-        let labFlags = LabFlagEvaluator.evaluate(labs: profile.labResults ?? .empty)
-        let input = SignalEngineInput.from(
-            profile: profile,
-            snapshot: snapshot,
-            labFlags: labFlags
-        )
-        healthSignals = HealthSignalEngine.evaluate(input)
+        let context = PersonalHealthContextBuilder.rebuild(profile: profile, snapshot: snapshot)
+        healthSignals = context.activeSignals
     }
 
     func toggleTipCompletion(_ tipID: String) {

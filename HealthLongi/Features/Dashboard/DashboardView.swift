@@ -170,6 +170,7 @@ struct DashboardView: View {
             try? modelContext.save()
         }
         viewModel.refreshSignals(profile: profiles.first)
+        try? modelContext.save()
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profile,
             orchestrator: dependencies.orchestrator,
@@ -186,6 +187,7 @@ struct DashboardView: View {
             try? modelContext.save()
         }
         viewModel.refreshSignals(profile: profiles.first)
+        try? modelContext.save()
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profiles.first,
             orchestrator: dependencies.orchestrator,

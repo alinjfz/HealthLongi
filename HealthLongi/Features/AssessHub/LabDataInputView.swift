@@ -328,6 +328,7 @@ struct LabDataInputView: View {
             LabResultsSnapshot(recordedAt: reportDate ?? .now, results: labs),
             at: 0
         )
+        PersonalHealthContextBuilder.rebuild(profile: profile, snapshot: .empty)
         errorMessage = nil
         try? modelContext.save()
         dismiss()
