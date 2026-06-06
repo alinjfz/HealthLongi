@@ -160,10 +160,6 @@ struct DashboardView: View {
                 action: { selectedDomain = .metabolic }
             )
 
-            if !profile.correlations.isEmpty {
-                correlationsCard
-            }
-
             NHSResourcesCard(profile: profile)
 
             if let error = viewModel.errorMessage {
@@ -209,38 +205,6 @@ struct DashboardView: View {
         )
     }
 
-    private var correlationsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Mind-Body Connections", systemImage: "link")
-                .font(.headline)
-                .foregroundStyle(NHSTheme.primaryBlue)
-
-            ForEach(profile.correlations, id: \.self) { correlation in
-                Text(correlationLabel(correlation))
-                    .font(.subheadline)
-                    .foregroundStyle(NHSTheme.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .nhsCard()
-    }
-
-    private func correlationLabel(_ key: String) -> String {
-        switch key {
-        case "dropping_steps_with_high_gad7":
-            "Decreased activity alongside elevated anxiety"
-        case "poor_sleep_with_high_anxiety":
-            "Poor sleep alongside elevated anxiety"
-        case "poor_sleep_with_elevated_depression":
-            "Poor sleep alongside elevated depression"
-        case "low_activity_with_elevated_depression":
-            "Low activity alongside elevated depression"
-        default:
-            key.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-    }
 }
 
 #Preview {
