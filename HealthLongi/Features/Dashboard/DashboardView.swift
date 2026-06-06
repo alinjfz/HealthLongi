@@ -125,8 +125,19 @@ struct DashboardView: View {
     }
 
     private func refreshAndAssess(reason: AutoAssessmentReason) async {
+        guard let profile = profiles.first, profile.phq9Score > 0 || profile.gad7Score > 0 else { return }
+
+        viewModel.isUpdatingAssessment = true
+        defer { viewModel.isUpdatingAssessment = false }
+
         await viewModel.refreshHealthKit()
-        await runAssessmentIfNeeded(reason: reason)
+        await viewModel.autoRunAssessmentIfNeeded(
+            profile: profile,
+            orchestrator: dependencies.orchestrator,
+            modelContext: modelContext,
+            reason: reason,
+            showsProgress: false
+        )
     }
 
     private func runAssessmentIfNeeded(reason: AutoAssessmentReason) async {

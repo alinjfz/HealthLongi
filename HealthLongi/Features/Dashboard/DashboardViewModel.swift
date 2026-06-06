@@ -118,7 +118,8 @@ final class DashboardViewModel {
         profile: UserProfile?,
         orchestrator: AssessmentOrchestrator,
         modelContext: ModelContext,
-        reason: AutoAssessmentReason
+        reason: AutoAssessmentReason,
+        showsProgress: Bool = true
     ) async {
         guard !isRunningAssessment else { return }
         guard let profile else { return }
@@ -134,9 +135,12 @@ final class DashboardViewModel {
         guard shouldRun else { return }
 
         isRunningAssessment = true
-        defer { isRunningAssessment = false }
+        if showsProgress { isUpdatingAssessment = true }
+        defer {
+            isRunningAssessment = false
+            if showsProgress { isUpdatingAssessment = false }
+        }
 
-        isUpdatingAssessment = true
         errorMessage = nil
         let previousSummary = latestSummary
 
@@ -159,8 +163,6 @@ final class DashboardViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isUpdatingAssessment = false
     }
 
     private func resolvedSummary(

@@ -55,7 +55,11 @@ struct PersonalizedSummaryCard: View {
                     .font(.headline)
                     .foregroundStyle(NHSTheme.textPrimary)
 
-                if let lastUpdated {
+                if isUpdating {
+                    Text("Generating AI summary…")
+                        .font(.caption2)
+                        .foregroundStyle(NHSTheme.primaryBlue)
+                } else if let lastUpdated {
                     Text("Updated \(lastUpdated.formatted(.relative(presentation: .named)))")
                         .font(.caption2)
                         .foregroundStyle(NHSTheme.textSecondary)
@@ -96,10 +100,28 @@ struct PersonalizedSummaryCard: View {
 
     @ViewBuilder
     private var summaryContent: some View {
-        if isUpdating && (summaryText == nil || summaryText?.isEmpty == true) {
-            Text("Calculating scores and generating your summary…")
-                .font(.subheadline)
-                .foregroundStyle(NHSTheme.textSecondary)
+        if isUpdating {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .tint(NHSTheme.primaryBlue)
+                    Text("Calculating scores and generating your summary…")
+                        .font(.subheadline)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+
+                if let summaryText, !summaryText.isEmpty {
+                    Text("Showing your previous summary until the new one is ready.")
+                        .font(.caption)
+                        .foregroundStyle(NHSTheme.textSecondary)
+
+                    MarkdownSummaryText(
+                        content: summaryText,
+                        isExpanded: isSummaryExpanded
+                    )
+                    .opacity(0.55)
+                }
+            }
         } else if let summaryText, !summaryText.isEmpty {
             if usedFallback {
                 Label("Offline summary — AI insights unavailable", systemImage: "wifi.slash")
