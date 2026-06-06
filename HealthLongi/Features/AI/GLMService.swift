@@ -16,16 +16,26 @@ struct GLMService: AISummarizing {
             return fallbackResult(for: profile)
         }
 
-        do {
-            let markdown = try await requestSummary(profile: profile, apiKey: apiKey)
-            return AISummaryResult(
-                markdownSummary: markdown,
-                suggestedLinkKeys: NHSLinks.links(for: profile).map(\.id),
-                usedFallback: false
-            )
-        } catch {
-            return fallbackResult(for: profile)
+        for attempt in 1...3 {
+            do {
+                let markdown = try await requestSummary(profile: profile, apiKey: apiKey)
+                return AISummaryResult(
+                    markdownSummary: markdown,
+                    suggestedLinkKeys: NHSLinks.links(for: profile).map(\.id),
+                    usedFallback: false
+                )
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                guard attempt == 3 else {
+                    try await Task.sleep(nanoseconds: UInt64(attempt) * 500_000_000)
+                    continue
+                }
+                return fallbackResult(for: profile)
+            }
         }
+
+        return fallbackResult(for: profile)
     }
 
     private func requestSummary(profile: AbstractedRiskProfile, apiKey: String) async throws -> String {

@@ -39,7 +39,7 @@ struct DashboardView: View {
                 }
                 .onChange(of: assessments.count) {
                     guard !viewModel.isUpdatingAssessment else { return }
-                    viewModel.loadLatest(from: assessments)
+                    viewModel.loadLatest(from: assessments, preferExistingSummary: true)
                 }
                 .onChange(of: profiles.first?.phq9Score) {
                     viewModel.markQuestionnaireDataUpdated()
@@ -120,7 +120,7 @@ struct DashboardView: View {
             .padding()
         }
         .refreshable {
-            await refreshAndAssess(reason: .userRefresh)
+            await runAssessmentIfNeeded(reason: .userRefresh)
         }
     }
 

@@ -26,14 +26,27 @@ final class DashboardViewModel {
         self.healthDataProvider = healthDataProvider
     }
 
-    func loadLatest(from assessments: [RiskAssessment]) {
-        latestAssessment = assessments.sorted { $0.timestamp > $1.timestamp }.first
+    func loadLatest(from assessments: [RiskAssessment], preferExistingSummary: Bool = false) {
+        let sorted = assessments.sorted { $0.timestamp > $1.timestamp }
+        latestAssessment = sorted.first
+
         if let assessment = latestAssessment {
-            latestSummary = AISummaryResult(
-                markdownSummary: assessment.aiSummaryText,
-                suggestedLinkKeys: NHSLinks.links(for: assessment.abstractedProfile).map(\.id),
-                usedFallback: assessment.usedAIFallback
+            let summarySource = sorted.first(where: { !$0.usedAIFallback }) ?? assessment
+            let loadedSummary = AISummaryResult(
+                markdownSummary: summarySource.aiSummaryText,
+                suggestedLinkKeys: NHSLinks.links(for: summarySource.abstractedProfile).map(\.id),
+                usedFallback: summarySource.usedAIFallback
             )
+
+            if preferExistingSummary,
+               let latestSummary,
+               !latestSummary.usedFallback,
+               loadedSummary.usedFallback {
+                // Keep in-memory AI summary if DB row is a fallback from a failed refresh.
+            } else {
+                latestSummary = loadedSummary
+            }
+
             selectedTips = HealthTips.forProfile(assessment.abstractedProfile)
         } else {
             latestSummary = nil
@@ -125,21 +138,48 @@ final class DashboardViewModel {
 
         isUpdatingAssessment = true
         errorMessage = nil
+        let previousSummary = latestSummary
 
         do {
             try await orchestrator.requestHealthAuthorization()
             let result = try await orchestrator.runAssessment(profile: profile, modelContext: modelContext)
             latestAssessment = result.assessment
-            latestSummary = result.summary
+            latestSummary = resolvedSummary(
+                result: result,
+                previous: previousSummary,
+                reason: reason
+            )
             selectedTips = HealthTips.forProfile(result.assessment.abstractedProfile)
             hasNewHealthData = false
             hasNewQuestionnaireData = false
             lastAssessmentTimestamp = result.assessment.timestamp
+            lastRefreshedAt = .now
+        } catch is CancellationError {
+            // Keep the existing summary when refresh is cancelled.
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isUpdatingAssessment = false
+    }
+
+    private func resolvedSummary(
+        result: AssessmentOrchestrator.AssessmentRunResult,
+        previous: AISummaryResult?,
+        reason: AutoAssessmentReason
+    ) -> AISummaryResult {
+        guard result.summary.usedFallback,
+              reason == .userRefresh,
+              let previous,
+              !previous.usedFallback else {
+            return result.summary
+        }
+
+        return AISummaryResult(
+            markdownSummary: previous.markdownSummary,
+            suggestedLinkKeys: NHSLinks.links(for: result.assessment.abstractedProfile).map(\.id),
+            usedFallback: false
+        )
     }
 }
 
