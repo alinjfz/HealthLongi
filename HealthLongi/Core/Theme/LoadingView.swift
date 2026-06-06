@@ -26,10 +26,15 @@ struct LoadingView: View {
 
 private struct SkeletonCard: View {
     @State private var animating = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         RoundedRectangle(cornerRadius: 12)
-            .fill(NHSTheme.lightBlue.opacity(animating ? 0.5 : 0.9))
+            .fill(
+                colorScheme == .dark
+                    ? NHSTheme.lightBlue.opacity(animating ? 0.4 : 0.8)
+                    : NHSTheme.lightBlue.opacity(animating ? 0.5 : 0.9)
+            )
             .frame(height: 80)
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
