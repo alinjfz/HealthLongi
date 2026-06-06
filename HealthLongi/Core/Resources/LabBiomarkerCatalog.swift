@@ -1,5 +1,12 @@
 import Foundation
 
+struct LabReferenceRange: Codable, Sendable, Equatable {
+    var min: Double?
+    var max: Double?
+    var unit: String
+    var nhsLabel: String
+}
+
 enum LabPanel: String, CaseIterable, Identifiable {
     case basic
     case extensive
@@ -61,7 +68,7 @@ enum LabCategory: String, CaseIterable, Identifiable {
     }
 }
 
-enum LabBiomarker: String, CaseIterable, Identifiable {
+enum LabBiomarker: String, CaseIterable, Identifiable, Codable {
     case ast, alt, alp
     case ft4, tsh
     case esr, crp
@@ -253,6 +260,41 @@ enum LabBiomarker: String, CaseIterable, Identifiable {
             grouped[marker.category, default: []].append(marker)
         }
         return grouped
+    }
+
+    static let coreReferenceBiomarkers: [LabBiomarker] = [
+        .hba1c, .ldlCholesterol, .hdlCholesterol, .cholesterol, .bloodSugar,
+        .vitaminD, .tsh, .bloodPressureSystolic, .bloodPressureDiastolic,
+        .crp, .egfr
+    ]
+
+    var referenceRange: LabReferenceRange? {
+        switch self {
+        case .hba1c:
+            LabReferenceRange(min: nil, max: 6.0, unit: unit, nhsLabel: "Non-diabetic: below 6.0%")
+        case .ldlCholesterol:
+            LabReferenceRange(min: nil, max: 3.0, unit: unit, nhsLabel: "Desirable: below 3.0 mmol/L")
+        case .hdlCholesterol:
+            LabReferenceRange(min: 1.0, max: nil, unit: unit, nhsLabel: "Desirable: 1.0 mmol/L or above")
+        case .cholesterol:
+            LabReferenceRange(min: nil, max: 5.0, unit: unit, nhsLabel: "Desirable: below 5.0 mmol/L")
+        case .bloodSugar:
+            LabReferenceRange(min: 3.9, max: 5.5, unit: unit, nhsLabel: "Normal fasting: 3.9–5.5 mmol/L")
+        case .vitaminD:
+            LabReferenceRange(min: 25, max: nil, unit: unit, nhsLabel: "Sufficient: 25 nmol/L or above")
+        case .tsh:
+            LabReferenceRange(min: 0.4, max: 4.0, unit: unit, nhsLabel: "Normal: 0.4–4.0 mIU/L")
+        case .bloodPressureSystolic:
+            LabReferenceRange(min: nil, max: 140, unit: unit, nhsLabel: "Normal: below 140 mmHg")
+        case .bloodPressureDiastolic:
+            LabReferenceRange(min: nil, max: 90, unit: unit, nhsLabel: "Normal: below 90 mmHg")
+        case .crp:
+            LabReferenceRange(min: nil, max: 3.0, unit: unit, nhsLabel: "Low risk: below 3.0 mg/L")
+        case .egfr:
+            LabReferenceRange(min: 60, max: nil, unit: unit, nhsLabel: "Normal kidney function: 60 or above")
+        default:
+            nil
+        }
     }
 }
 
