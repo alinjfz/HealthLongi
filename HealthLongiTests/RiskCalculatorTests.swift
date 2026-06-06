@@ -52,6 +52,43 @@ final class RiskCalculatorTests: XCTestCase {
         XCTAssertFalse(json.contains("age"))
     }
 
+    func testElevatedLabSignalsIncreaseCardioAndMetabolicRisk() {
+        var signals = LabRiskSignals()
+        signals.elevatedGlucose = true
+        signals.elevatedLipids = true
+        signals.elevatedBloodPressure = true
+
+        let input = AssessmentInput(
+            demographics: Demographics(age: 50, sex: .male, smokingStatus: .never),
+            weeklySteps: 6000,
+            priorWeeklySteps: 6000,
+            restingHeartRate: 68,
+            sleepHoursAvg: 7,
+            phq9Score: 2,
+            gad7Score: 1,
+            bmi: 24,
+            physicalActivityMinutes: 90,
+            labSignals: signals
+        )
+
+        let baseline = calculator.calculate(input: AssessmentInput(
+            demographics: input.demographics,
+            weeklySteps: input.weeklySteps,
+            priorWeeklySteps: input.priorWeeklySteps,
+            restingHeartRate: input.restingHeartRate,
+            sleepHoursAvg: input.sleepHoursAvg,
+            phq9Score: input.phq9Score,
+            gad7Score: input.gad7Score,
+            bmi: input.bmi,
+            physicalActivityMinutes: input.physicalActivityMinutes
+        ))
+
+        let withLabs = calculator.calculate(input: input)
+        XCTAssertGreaterThan(withLabs.cardioScore, baseline.cardioScore)
+        XCTAssertGreaterThan(withLabs.metabolicScore, baseline.metabolicScore)
+        XCTAssertTrue(withLabs.profile.labSignals.elevatedGlucose)
+    }
+
     func testHighMetabolicRiskForObeseSedentaryOlderAdult() {
         let input = AssessmentInput(
             demographics: Demographics(age: 65, sex: .male, smokingStatus: .never),

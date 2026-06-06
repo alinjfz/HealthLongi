@@ -123,7 +123,8 @@ final class EnhancementTests: XCTestCase {
             cardioRisk: .moderate,
             mentalHealth: .mild,
             metabolic: .low,
-            correlations: ["test"]
+            correlations: ["test"],
+            labSignals: LabRiskSignals(elevatedLipids: true, elevatedGlucose: true)
         )
         let json = try JSONEncoder().encode(profile)
         let text = String(data: json, encoding: .utf8) ?? ""
@@ -234,7 +235,8 @@ final class EnhancementTests: XCTestCase {
             cardioRisk: .low,
             mentalHealth: .highAnxiety,
             metabolic: .low,
-            correlations: []
+            correlations: [],
+            labSignals: .empty
         )
         let tips = HealthTips.forProfile(profile)
         XCTAssertTrue(tips.contains { $0.category == .mental })

@@ -325,6 +325,7 @@ struct LabDataInputView: View {
         profile.labResults = labs
         errorMessage = nil
         try? modelContext.save()
+        NotificationCenter.default.post(name: .labDataDidUpdate, object: nil)
         dismiss()
     }
 }

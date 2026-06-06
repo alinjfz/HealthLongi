@@ -7,7 +7,8 @@ final class AbstractedRiskProfileTests: XCTestCase {
             cardioRisk: .moderate,
             mentalHealth: .highAnxiety,
             metabolic: .low,
-            correlations: ["dropping_steps_with_high_gad7"]
+            correlations: ["dropping_steps_with_high_gad7"],
+            labSignals: .empty
         )
 
         let data = try JSONEncoder().encode(profile)
@@ -21,7 +22,8 @@ final class AbstractedRiskProfileTests: XCTestCase {
             cardioRisk: .high,
             mentalHealth: .moderateDepression,
             metabolic: .moderate,
-            correlations: ["poor_sleep_with_elevated_depression"]
+            correlations: ["poor_sleep_with_elevated_depression"],
+            labSignals: .empty
         )
 
         let assessment = RiskAssessment(
@@ -41,7 +43,8 @@ final class AbstractedRiskProfileTests: XCTestCase {
             cardioRisk: .low,
             mentalHealth: .highAnxiety,
             metabolic: .low,
-            correlations: []
+            correlations: [],
+            labSignals: .empty
         )
 
         let links = NHSLinks.links(for: profile)

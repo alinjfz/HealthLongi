@@ -68,6 +68,7 @@ struct QuestionnaireSheetView: View {
         savedScore = score
         profile.markQuestionnaireComplete(kind, score: score)
         try? modelContext.save()
+        NotificationCenter.default.post(name: .questionnaireDataDidUpdate, object: nil)
         onSave()
         showCompletion = true
     }

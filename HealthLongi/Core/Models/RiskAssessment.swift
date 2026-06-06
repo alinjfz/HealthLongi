@@ -8,6 +8,7 @@ final class RiskAssessment {
     var mentalHealthRaw: String
     var metabolicRaw: String
     var correlationsJSON: String
+    var labSignalsJSON: String?
     var aiSummaryText: String
     var phq9Score: Int
     var gad7Score: Int
@@ -33,6 +34,10 @@ final class RiskAssessment {
             data: JSONEncoder().encode(profile.correlations),
             encoding: .utf8
         )) ?? "[]"
+        self.labSignalsJSON = try? String(
+            data: JSONEncoder().encode(profile.labSignals),
+            encoding: .utf8
+        )
         self.aiSummaryText = aiSummaryText
         self.phq9Score = phq9Score
         self.gad7Score = gad7Score
@@ -50,11 +55,21 @@ final class RiskAssessment {
             correlations = []
         }
 
+        let labSignals: LabRiskSignals
+        if let labSignalsJSON,
+           let data = labSignalsJSON.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode(LabRiskSignals.self, from: data) {
+            labSignals = decoded
+        } else {
+            labSignals = .empty
+        }
+
         return AbstractedRiskProfile(
             cardioRisk: RiskLevel(rawValue: cardioRiskRaw) ?? .low,
             mentalHealth: MentalFlag(rawValue: mentalHealthRaw) ?? .none,
             metabolic: RiskLevel(rawValue: metabolicRaw) ?? .low,
-            correlations: correlations
+            correlations: correlations,
+            labSignals: labSignals
         )
     }
 }

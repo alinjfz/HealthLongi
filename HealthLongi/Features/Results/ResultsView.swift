@@ -131,7 +131,8 @@ extension URL: @retroactive Identifiable {
                 cardioRisk: .moderate,
                 mentalHealth: .highAnxiety,
                 metabolic: .low,
-                correlations: ["dropping_steps_with_high_gad7"]
+                correlations: ["dropping_steps_with_high_gad7"],
+                labSignals: .empty
             ),
             aiSummaryText: "## Summary\nYour assessment suggests elevated anxiety alongside reduced activity.",
             phq9Score: 8,

@@ -24,6 +24,7 @@ struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel
     @State private var selectedDomain: HealthDomain?
+    @State private var showSummaryInfo = false
     @State private var dashboardSection: DashboardSection = .overview
 
     init() {
@@ -55,6 +56,14 @@ struct DashboardView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .demoHealthDataDidSeed)) { _ in
                     Task { await refreshAndAssess(reason: .newData) }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .labDataDidUpdate)) { _ in
+                    viewModel.markLabDataUpdated()
+                    Task { await runAssessmentIfNeeded(reason: .newData) }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .questionnaireDataDidUpdate)) { _ in
+                    viewModel.markQuestionnaireDataUpdated()
+                    Task { await runAssessmentIfNeeded(reason: .newData) }
+                }
                 .onChange(of: assessments.count) {
                     guard !viewModel.isUpdatingAssessment else { return }
                     viewModel.loadLatest(from: assessments, preferExistingSummary: true)
@@ -69,6 +78,14 @@ struct DashboardView: View {
                 }
                 .sheet(item: $selectedDomain) { domain in
                     DomainDetailView(domain: domain, profile: profile)
+                }
+                .sheet(isPresented: $showSummaryInfo) {
+                    HealthSummaryInfoSheet(
+                        assessment: viewModel.latestAssessment,
+                        userProfile: profiles.first,
+                        healthSnapshot: viewModel.healthSnapshot,
+                        summaryResult: viewModel.latestSummary
+                    )
                 }
         }
     }
@@ -108,7 +125,9 @@ struct DashboardView: View {
                 lastUpdated: viewModel.latestAssessment?.timestamp,
                 tips: viewModel.selectedTips,
                 completedTipIDs: viewModel.completedTipIDs,
-                onToggleTip: { viewModel.toggleTipCompletion($0) }
+                correlations: profile.correlations,
+                onToggleTip: { viewModel.toggleTipCompletion($0) },
+                onShowInfo: { showSummaryInfo = true }
             )
 
             BodyMapView(

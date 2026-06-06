@@ -9,7 +9,9 @@ struct PersonalizedSummaryCard: View {
     let lastUpdated: Date?
     let tips: [HealthTip]
     let completedTipIDs: Set<String>
+    let correlations: [String]
     let onToggleTip: (String) -> Void
+    let onShowInfo: () -> Void
 
     @State private var isTipsExpanded = false
     @State private var isSummaryExpanded = false
@@ -19,6 +21,10 @@ struct PersonalizedSummaryCard: View {
             headerRow
 
             riskBadges
+
+            if !correlations.isEmpty {
+                correlationsRow
+            }
 
             summaryContent
 
@@ -71,8 +77,34 @@ struct PersonalizedSummaryCard: View {
             if isUpdating {
                 ProgressView()
                     .tint(NHSTheme.primaryBlue)
+            } else {
+                Button(action: onShowInfo) {
+                    Image(systemName: "info.circle")
+                        .font(.title3)
+                        .foregroundStyle(NHSTheme.primaryBlue)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About this health summary")
             }
         }
+    }
+
+    private var correlationsRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Patterns detected")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            ForEach(correlations, id: \.self) { key in
+                Label(CorrelationLabels.displayName(for: key), systemImage: "link")
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
+        .background(NHSTheme.lightBlue.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var riskBadges: some View {

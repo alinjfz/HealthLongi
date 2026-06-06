@@ -17,6 +17,7 @@ final class DashboardViewModel {
     /// Tracks which data sources have new data since the last assessment
     var hasNewHealthData = false
     var hasNewQuestionnaireData = false
+    var hasNewLabData = false
 
     private let healthDataProvider: (any HealthDataProviding)?
     private var lastAssessmentTimestamp: Date?
@@ -78,6 +79,10 @@ final class DashboardViewModel {
         hasNewQuestionnaireData = true
     }
 
+    func markLabDataUpdated() {
+        hasNewLabData = true
+    }
+
     func toggleTipCompletion(_ tipID: String) {
         if completedTipIDs.contains(tipID) {
             completedTipIDs.remove(tipID)
@@ -111,6 +116,11 @@ final class DashboardViewModel {
         items.append(ReadinessItem(title: "Demographics", icon: "person.fill", isComplete: demoDone))
         if demoDone { completed += 1 }
 
+        // Lab results
+        let labsDone = profile?.labResults?.hasAnyValue == true
+        items.append(ReadinessItem(title: "Lab Results", icon: "flask.fill", isComplete: labsDone))
+        if labsDone { completed += 1 }
+
         return (completed, items.count, items)
     }
 
@@ -129,7 +139,7 @@ final class DashboardViewModel {
         case .appOpened, .userRefresh:
             true
         case .newData:
-            hasNewHealthData || hasNewQuestionnaireData
+            hasNewHealthData || hasNewQuestionnaireData || hasNewLabData
         }
 
         guard shouldRun else { return }
@@ -156,6 +166,7 @@ final class DashboardViewModel {
             selectedTips = HealthTips.forProfile(result.assessment.abstractedProfile)
             hasNewHealthData = false
             hasNewQuestionnaireData = false
+            hasNewLabData = false
             lastAssessmentTimestamp = result.assessment.timestamp
             lastRefreshedAt = .now
         } catch is CancellationError {

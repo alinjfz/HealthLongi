@@ -39,6 +39,14 @@ enum GLMPrompts {
             """
         }
 
+        if profile.labSignals.hasAnySignal {
+            prompt += """
+            Lab-derived flags (boolean only, no raw values) are included in the JSON. \
+            You may gently reference early metabolic or heart-health signals if relevant, without numbers or diagnoses.
+
+            """
+        }
+
         prompt += "Respond with plain Markdown only (paragraphs and optional bullets). No JSON."
         return prompt
     }
@@ -67,6 +75,24 @@ enum GLMPrompts {
             lines.append("When we're anxious, moving less is very common — a short daily walk can help both body and mind.")
         } else if profile.correlations.contains("poor_sleep_with_high_anxiety") {
             lines.append("Poor sleep and worry often go hand in hand — a regular wind-down routine may ease both.")
+        } else if profile.correlations.contains("poor_sleep_with_elevated_depression") {
+            lines.append("Sleep and mood often influence each other — a steadier bedtime routine may help.")
+        } else if profile.correlations.contains("low_activity_with_elevated_depression") {
+            lines.append("When mood is low, activity often drops too — even a brief daily walk can make a difference.")
+        } else if profile.correlations.contains("elevated_glucose_with_low_activity") {
+            lines.append("Your blood sugar markers and activity levels suggest small daily movement could help.")
+        } else if profile.correlations.contains("elevated_lipids_with_sedentary_lifestyle") {
+            lines.append("Heart-related lab markers and low activity may be linked — gentle regular movement is a good start.")
+        } else if profile.correlations.contains("elevated_bp_with_high_resting_hr") {
+            lines.append("Your blood pressure and heart rate signals suggest your cardiovascular system may need a little care.")
+        } else if profile.correlations.contains("low_nutrients_with_poor_sleep") {
+            lines.append("Low nutrient markers and short sleep can reinforce each other — discuss both with your GP if concerned.")
+        } else if profile.correlations.contains("high_stress_with_poor_sleep") {
+            lines.append("Stress and poor sleep often feed each other — prioritising rest could help break the cycle.")
+        }
+
+        if profile.labSignals.elevatedGlucose || profile.labSignals.elevatedLipids {
+            lines.append("Some of your lab markers suggest early metabolic or heart health signals worth monitoring.")
         }
 
         let action: String

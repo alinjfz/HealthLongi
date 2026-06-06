@@ -6,11 +6,13 @@ struct AbstractedRiskProfile: Codable, Sendable, Equatable {
     var mentalHealth: MentalFlag
     var metabolic: RiskLevel
     var correlations: [String]
+    var labSignals: LabRiskSignals
 
     static let placeholder = AbstractedRiskProfile(
         cardioRisk: .low,
         mentalHealth: .none,
         metabolic: .low,
-        correlations: []
+        correlations: [],
+        labSignals: .empty
     )
 }

@@ -35,7 +35,12 @@ final class AssessmentOrchestrator {
             phq9Score: profile.phq9Score,
             gad7Score: profile.gad7Score,
             bmi: profile.bmi,
-            physicalActivityMinutes: profile.physicalActivityMinutes
+            physicalActivityMinutes: profile.physicalActivityMinutes,
+            labSignals: LabRiskSignals.from(labs: profile.labResults),
+            who5Score: profile.who5Complete ? profile.who5Score : nil,
+            pss10Score: profile.pss10Complete ? profile.pss10Score : nil,
+            phq15Score: profile.phq15Complete ? profile.phq15Score : nil,
+            auditCScore: profile.auditCComplete ? profile.auditCScore : nil
         )
 
         let scoring = riskCalculator.calculate(input: input)

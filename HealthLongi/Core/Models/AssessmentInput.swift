@@ -10,4 +10,9 @@ struct AssessmentInput: Sendable, Equatable {
     var gad7Score: Int
     var bmi: Double?
     var physicalActivityMinutes: Int?
+    var labSignals: LabRiskSignals = .empty
+    var who5Score: Int?
+    var pss10Score: Int?
+    var phq15Score: Int?
+    var auditCScore: Int?
 }

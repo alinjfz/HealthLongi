@@ -3,6 +3,8 @@ import SwiftData
 
 extension Notification.Name {
     static let demoHealthDataDidSeed = Notification.Name("demoHealthDataDidSeed")
+    static let labDataDidUpdate = Notification.Name("labDataDidUpdate")
+    static let questionnaireDataDidUpdate = Notification.Name("questionnaireDataDidUpdate")
 }
 
 enum DemoSeeder {
@@ -74,6 +76,7 @@ enum DemoSeeder {
         }
 
         NotificationCenter.default.post(name: .demoHealthDataDidSeed, object: nil)
+        NotificationCenter.default.post(name: .labDataDidUpdate, object: nil)
 
         return SeedResult(
             scenarioTitle: scenario.title,
