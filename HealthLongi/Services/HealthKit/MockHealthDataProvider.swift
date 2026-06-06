@@ -27,4 +27,33 @@ struct MockHealthDataProvider: HealthDataProviding {
     func fetchWeeklySnapshot() async throws -> WeeklyHealthSnapshot {
         snapshot
     }
+
+    func fetchDailySeries(for metric: HealthKitMetric, days: Int) async throws -> [DailyDataPoint] {
+        MockHealthDataProvider.generateSeries(for: metric, days: days, base: snapshot)
+    }
+
+    static func generateSeries(for metric: HealthKitMetric, days: Int, base: WeeklyHealthSnapshot) -> [DailyDataPoint] {
+        let calendar = Calendar.current
+        let baseValue: Double = {
+            switch metric {
+            case .steps: Double(base.averageDailySteps)
+            case .restingHeartRate: base.averageRestingHeartRate ?? 70
+            case .sleep: base.averageSleepHours ?? 7
+            case .activeEnergy: base.activeEnergyBurned ?? 300
+            case .distance: base.distanceWalkingRunning ?? 3
+            case .hrv: base.heartRateVariability ?? 40
+            case .oxygenSaturation: base.oxygenSaturation ?? 97
+            case .bodyMass: base.bodyMass ?? 75
+            case .height: (base.height ?? 1.75) * 100
+            case .bodyFat: base.bodyFatPercentage ?? 22
+            case .mindfulMinutes: base.mindfulMinutes ?? 5
+            }
+        }()
+
+        return (0..<days).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: calendar.startOfDay(for: .now)) else { return nil }
+            let noise = sin(Double(offset) * 0.4) * baseValue * 0.08
+            return DailyDataPoint(date: date, value: max(0, baseValue + noise))
+        }.reversed()
+    }
 }

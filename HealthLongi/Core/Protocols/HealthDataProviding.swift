@@ -5,6 +5,7 @@ protocol HealthDataProviding: Sendable {
     func requestAuthorization() async throws
     func fetchWeeklySnapshot() async throws -> WeeklyHealthSnapshot
     func fetchProfileDemographics() async -> ProfileDemographicsSnapshot
+    func fetchDailySeries(for metric: HealthKitMetric, days: Int) async throws -> [DailyDataPoint]
 }
 
 extension HealthDataProviding {
@@ -12,5 +13,9 @@ extension HealthDataProviding {
 
     func fetchProfileDemographics() async -> ProfileDemographicsSnapshot {
         ProfileDemographicsSnapshot()
+    }
+
+    func fetchDailySeries(for metric: HealthKitMetric, days: Int) async throws -> [DailyDataPoint] {
+        []
     }
 }

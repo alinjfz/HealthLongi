@@ -80,6 +80,175 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         )
     }
 
+    func fetchDailySeries(for metric: HealthKitMetric, days: Int) async throws -> [DailyDataPoint] {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
+        let now = Date.now
+        let start = Calendar.current.date(byAdding: .day, value: -days, to: Calendar.current.startOfDay(for: now))!
+
+        switch metric {
+        case .steps:
+            return try await dailyCumulativeSeries(from: start, to: now, identifier: .stepCount, unit: .count())
+        case .activeEnergy:
+            return try await dailyCumulativeSeries(from: start, to: now, identifier: .activeEnergyBurned, unit: .kilocalorie())
+        case .distance:
+            return try await dailyCumulativeSeries(from: start, to: now, identifier: .distanceWalkingRunning, unit: .meterUnit(with: .kilo))
+        case .restingHeartRate:
+            return try await dailyAverageSeries(from: start, to: now, identifier: .restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()))
+        case .hrv:
+            return try await dailyAverageSeries(from: start, to: now, identifier: .heartRateVariabilitySDNN, unit: HKUnit.secondUnit(with: .milli))
+        case .oxygenSaturation:
+            return try await dailyAverageSeries(from: start, to: now, identifier: .oxygenSaturation, unit: .percent())
+        case .bodyMass:
+            return try await dailyLatestSeries(from: start, to: now, identifier: .bodyMass, unit: .gramUnit(with: .kilo))
+        case .sleep:
+            return try await dailySleepSeries(from: start, to: now)
+        case .mindfulMinutes:
+            return try await dailyMindfulSeries(from: start, to: now)
+        case .height, .bodyFat:
+            return []
+        }
+    }
+
+    private func dailyCumulativeSeries(from start: Date, to end: Date,
+                                       identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> [DailyDataPoint] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum,
+                anchorDate: Calendar.current.startOfDay(for: start),
+                intervalComponents: DateComponents(day: 1)
+            )
+            query.initialResultsHandler = { _, results, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let results else { continuation.resume(returning: []); return }
+
+                var points: [DailyDataPoint] = []
+                results.enumerateStatistics(from: start, to: end) { stats, _ in
+                    if let sum = stats.sumQuantity() {
+                        points.append(DailyDataPoint(date: stats.startDate, value: sum.doubleValue(for: unit)))
+                    }
+                }
+                continuation.resume(returning: points.sorted { $0.date < $1.date })
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func dailyAverageSeries(from start: Date, to end: Date,
+                                    identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> [DailyDataPoint] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage,
+                anchorDate: Calendar.current.startOfDay(for: start),
+                intervalComponents: DateComponents(day: 1)
+            )
+            query.initialResultsHandler = { _, results, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let results else { continuation.resume(returning: []); return }
+
+                var points: [DailyDataPoint] = []
+                results.enumerateStatistics(from: start, to: end) { stats, _ in
+                    if let avg = stats.averageQuantity() {
+                        points.append(DailyDataPoint(date: stats.startDate, value: avg.doubleValue(for: unit)))
+                    }
+                }
+                continuation.resume(returning: points.sorted { $0.date < $1.date })
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func dailyLatestSeries(from start: Date, to end: Date,
+                                   identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> [DailyDataPoint] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [
+                NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+            ]) { _, samples, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let samples = samples as? [HKQuantitySample] else {
+                    continuation.resume(returning: []); return
+                }
+                let grouped = Dictionary(grouping: samples) { sample in
+                    Calendar.current.startOfDay(for: sample.startDate)
+                }
+                let points = grouped.compactMap { date, daySamples -> DailyDataPoint? in
+                    guard let latest = daySamples.max(by: { $0.startDate < $1.startDate }) else { return nil }
+                    return DailyDataPoint(date: date, value: latest.quantity.doubleValue(for: unit))
+                }.sorted { $0.date < $1.date }
+                continuation.resume(returning: points)
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func dailySleepSeries(from start: Date, to end: Date) async throws -> [DailyDataPoint] {
+        guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let samples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: []); return
+                }
+
+                let asleepValues: Set<Int> = [
+                    HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                ]
+
+                var dailySeconds: [Date: Double] = [:]
+                for sample in samples where asleepValues.contains(sample.value) {
+                    let day = Calendar.current.startOfDay(for: sample.startDate)
+                    dailySeconds[day, default: 0] += sample.endDate.timeIntervalSince(sample.startDate)
+                }
+                let points = dailySeconds.map { DailyDataPoint(date: $0.key, value: $0.value / 3600) }.sorted { $0.date < $1.date }
+                continuation.resume(returning: points)
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func dailyMindfulSeries(from start: Date, to end: Date) async throws -> [DailyDataPoint] {
+        guard let type = HKCategoryType.categoryType(forIdentifier: .mindfulSession) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error { continuation.resume(throwing: error); return }
+                guard let samples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: []); return
+                }
+
+                var dailyMinutes: [Date: Double] = [:]
+                for sample in samples where sample.value == 1 {
+                    let day = Calendar.current.startOfDay(for: sample.startDate)
+                    dailyMinutes[day, default: 0] += sample.endDate.timeIntervalSince(sample.startDate) / 60
+                }
+                let points = dailyMinutes.map { DailyDataPoint(date: $0.key, value: $0.value) }.sorted { $0.date < $1.date }
+                continuation.resume(returning: points)
+            }
+            healthStore.execute(query)
+        }
+    }
+
     // MARK: - Demographics from HealthKit
 
     func fetchDateOfBirth() -> Date? {

@@ -1,5 +1,6 @@
 import Foundation
 
+/// Anonymized risk profile sent to GLM — must never include raw lab results or genetics data.
 struct AbstractedRiskProfile: Codable, Sendable, Equatable {
     var cardioRisk: RiskLevel
     var mentalHealth: MentalFlag

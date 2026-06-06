@@ -16,6 +16,14 @@ struct RootView: View {
             }
         }
         .background(NHSTheme.background)
+        .onAppear { migrateLegacyProfilesIfNeeded() }
+    }
+
+    private func migrateLegacyProfilesIfNeeded() {
+        for profile in profiles {
+            profile.migrateLegacyQuestionnaireCompletionIfNeeded()
+        }
+        try? modelContext.save()
     }
 
     private var needsOnboarding: Bool {
@@ -35,6 +43,12 @@ struct RootView: View {
                     Label("Assess", systemImage: "list.clipboard.fill")
                 }
                 .tag(AppTab.assess)
+
+            TrendsView()
+                .tabItem {
+                    Label("Trends", systemImage: "chart.xyaxis.line")
+                }
+                .tag(AppTab.trends)
 
             ProfileSummaryView()
                 .tabItem {

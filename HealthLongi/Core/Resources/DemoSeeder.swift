@@ -19,6 +19,10 @@ enum DemoSeeder {
         profile.onboardingComplete = true
         profile.phq9Score = 8
         profile.gad7Score = 14
+        profile.phq9Complete = true
+        profile.gad7Complete = true
+        profile.phq9CompletedAt = .now
+        profile.gad7CompletedAt = .now
         profile.bmi = 24.5
         profile.physicalActivityMinutes = 20
 

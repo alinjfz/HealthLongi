@@ -8,7 +8,9 @@ struct QuestionnaireFlowView: View {
     @State private var step = 0
     @State private var phq9Answers: [Int?] = Array(repeating: nil, count: 9)
     @State private var gad7Answers: [Int?] = Array(repeating: nil, count: 7)
-    @State private var bmi = 25.0
+    @State private var bmi: Double?
+    @State private var weightKg: Double?
+    @State private var heightCm: Double?
     @State private var activityMinutes = 60
     @State private var savedMessage: String?
 
@@ -27,7 +29,13 @@ struct QuestionnaireFlowView: View {
                     case 1:
                         GAD7View(answers: $gad7Answers)
                     default:
-                        MetabolicInputView(bmi: $bmi, physicalActivityMinutes: $activityMinutes)
+                        MetabolicInputView(
+                            bmi: $bmi,
+                            weightKg: $weightKg,
+                            heightCm: $heightCm,
+                            physicalActivityMinutes: $activityMinutes,
+                            healthSnapshot: .empty
+                        )
                     }
 
                     navigationButtons
@@ -72,6 +80,7 @@ struct QuestionnaireFlowView: View {
             } else {
                 Button("Save Responses") { saveResponses() }
                     .buttonStyle(NHSPrimaryButtonStyle())
+                    .disabled(bmi == nil)
                     .frame(maxWidth: 200)
             }
         }
@@ -79,9 +88,11 @@ struct QuestionnaireFlowView: View {
 
     private func saveResponses() {
         guard let profile = profiles.first else { return }
-        profile.phq9Score = phq9Answers.compactMap { $0 }.reduce(0, +)
-        profile.gad7Score = gad7Answers.compactMap { $0 }.reduce(0, +)
+        profile.markQuestionnaireComplete(.phq9, score: phq9Answers.compactMap { $0 }.reduce(0, +))
+        profile.markQuestionnaireComplete(.gad7, score: gad7Answers.compactMap { $0 }.reduce(0, +))
         profile.bmi = bmi
+        profile.weightKg = weightKg
+        profile.heightCm = heightCm
         profile.physicalActivityMinutes = activityMinutes
         try? modelContext.save()
         savedMessage = "Responses saved. Run assessment from Dashboard."

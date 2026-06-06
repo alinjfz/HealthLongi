@@ -13,13 +13,38 @@ final class UserProfile {
     var createdAt: Date
     var onboardingComplete: Bool
 
-    var phq9Score: Int
-    var gad7Score: Int
+    var phq9Score: Int = 0
+    var gad7Score: Int = 0
+    var who5Score: Int = 0
+    var pss10Score: Int = 0
+    var sleepScore: Int = 0
+    var auditCScore: Int = 0
+    var phq15Score: Int = 0
+
+    var phq9Complete: Bool = false
+    var gad7Complete: Bool = false
+    var who5Complete: Bool = false
+    var pss10Complete: Bool = false
+    var sleepComplete: Bool = false
+    var auditCComplete: Bool = false
+    var phq15Complete: Bool = false
+
+    var phq9CompletedAt: Date?
+    var gad7CompletedAt: Date?
+    var who5CompletedAt: Date?
+    var pss10CompletedAt: Date?
+    var sleepCompletedAt: Date?
+    var auditCCompletedAt: Date?
+    var phq15CompletedAt: Date?
+
     var bmi: Double?
+    var weightKg: Double?
+    var heightCm: Double?
     var physicalActivityMinutes: Int?
 
     @Attribute(.externalStorage) private var manualHealthDataJSON: Data?
     @Attribute(.externalStorage) private var labResultsData: Data?
+    @Attribute(.externalStorage) private var geneticsProfileData: Data?
 
     // MARK: - Date of Birth (computed from age)
 
@@ -71,6 +96,20 @@ final class UserProfile {
         }
     }
 
+    var geneticsProfile: GeneticsProfile? {
+        get {
+            guard let geneticsProfileData else { return nil }
+            return try? JSONDecoder().decode(GeneticsProfile.self, from: geneticsProfileData)
+        }
+        set {
+            if let newValue {
+                geneticsProfileData = try? JSONEncoder().encode(newValue)
+            } else {
+                geneticsProfileData = nil
+            }
+        }
+    }
+
     // MARK: - Init
 
     init(
@@ -83,9 +122,25 @@ final class UserProfile {
         onboardingComplete: Bool = false,
         phq9Score: Int = 0,
         gad7Score: Int = 0,
+        who5Score: Int = 0,
+        pss10Score: Int = 0,
+        sleepScore: Int = 0,
+        auditCScore: Int = 0,
+        phq15Score: Int = 0,
+        phq9Complete: Bool = false,
+        gad7Complete: Bool = false,
+        who5Complete: Bool = false,
+        pss10Complete: Bool = false,
+        sleepComplete: Bool = false,
+        auditCComplete: Bool = false,
+        phq15Complete: Bool = false,
         bmi: Double? = nil,
+        weightKg: Double? = nil,
+        heightCm: Double? = nil,
         physicalActivityMinutes: Int? = nil,
-        labResults: LabResults? = nil
+        labResults: LabResults? = nil,
+        manualHealthData: ManualHealthData? = nil,
+        geneticsProfile: GeneticsProfile? = nil
     ) {
         let years = Calendar.current.dateComponents([.year], from: dateOfBirth, to: .now).year ?? 30
         self.age = max(0, years)
@@ -97,10 +152,30 @@ final class UserProfile {
         self.onboardingComplete = onboardingComplete
         self.phq9Score = phq9Score
         self.gad7Score = gad7Score
+        self.who5Score = who5Score
+        self.pss10Score = pss10Score
+        self.sleepScore = sleepScore
+        self.auditCScore = auditCScore
+        self.phq15Score = phq15Score
+        self.phq9Complete = phq9Complete
+        self.gad7Complete = gad7Complete
+        self.who5Complete = who5Complete
+        self.pss10Complete = pss10Complete
+        self.sleepComplete = sleepComplete
+        self.auditCComplete = auditCComplete
+        self.phq15Complete = phq15Complete
         self.bmi = bmi
+        self.weightKg = weightKg
+        self.heightCm = heightCm
         self.physicalActivityMinutes = physicalActivityMinutes
         if let labResults {
             self.labResultsData = try? JSONEncoder().encode(labResults)
+        }
+        if let manualHealthData {
+            self.manualHealthDataJSON = try? JSONEncoder().encode(manualHealthData)
+        }
+        if let geneticsProfile {
+            self.geneticsProfileData = try? JSONEncoder().encode(geneticsProfile)
         }
     }
 
@@ -112,5 +187,180 @@ final class UserProfile {
             smokingFrequency: smokingFrequency,
             genderIdentity: genderIdentity
         )
+    }
+
+    func markQuestionnaireComplete(_ kind: QuestionnaireKind, score: Int) {
+        let now = Date.now
+        switch kind {
+        case .phq9:
+            phq9Score = score
+            phq9Complete = true
+            phq9CompletedAt = now
+        case .gad7:
+            gad7Score = score
+            gad7Complete = true
+            gad7CompletedAt = now
+        case .who5:
+            who5Score = score
+            who5Complete = true
+            who5CompletedAt = now
+        case .pss10:
+            pss10Score = score
+            pss10Complete = true
+            pss10CompletedAt = now
+        case .sleep:
+            sleepScore = score
+            sleepComplete = true
+            sleepCompletedAt = now
+        case .auditC:
+            auditCScore = score
+            auditCComplete = true
+            auditCCompletedAt = now
+        case .phq15:
+            phq15Score = score
+            phq15Complete = true
+            phq15CompletedAt = now
+        }
+    }
+
+    func isComplete(_ kind: QuestionnaireKind) -> Bool {
+        switch kind {
+        case .phq9: phq9Complete
+        case .gad7: gad7Complete
+        case .who5: who5Complete
+        case .pss10: pss10Complete
+        case .sleep: sleepComplete
+        case .auditC: auditCComplete
+        case .phq15: phq15Complete
+        }
+    }
+
+    func completedAt(_ kind: QuestionnaireKind) -> Date? {
+        switch kind {
+        case .phq9: phq9CompletedAt
+        case .gad7: gad7CompletedAt
+        case .who5: who5CompletedAt
+        case .pss10: pss10CompletedAt
+        case .sleep: sleepCompletedAt
+        case .auditC: auditCCompletedAt
+        case .phq15: phq15CompletedAt
+        }
+    }
+
+    /// Backfill completion flags for profiles saved before flags were introduced.
+    func migrateLegacyQuestionnaireCompletionIfNeeded() {
+        let fallbackDate = createdAt
+        if !phq9Complete && phq9Score > 0 {
+            phq9Complete = true
+            phq9CompletedAt = phq9CompletedAt ?? fallbackDate
+        }
+        if !gad7Complete && gad7Score > 0 {
+            gad7Complete = true
+            gad7CompletedAt = gad7CompletedAt ?? fallbackDate
+        }
+    }
+}
+
+enum QuestionnaireKind: String, CaseIterable, Identifiable {
+    case phq9
+    case gad7
+    case who5
+    case pss10
+    case sleep
+    case auditC
+    case phq15
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .phq9: "PHQ-9"
+        case .gad7: "GAD-7"
+        case .who5: "WHO-5"
+        case .pss10: "PSS-10"
+        case .sleep: "Sleep Check-in"
+        case .auditC: "AUDIT-C"
+        case .phq15: "PHQ-15"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .phq9: "Mood check-in (9 questions)"
+        case .gad7: "Worry & anxiety check-in (7 questions)"
+        case .who5: "Wellbeing index (5 questions)"
+        case .pss10: "Stress check-in (10 questions)"
+        case .sleep: "Sleep quality (5 questions)"
+        case .auditC: "Alcohol screening (3 questions)"
+        case .phq15: "Physical symptoms (15 questions)"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .phq9: "brain.head.profile"
+        case .gad7: "waveform.path.ecg"
+        case .who5: "sun.max.fill"
+        case .pss10: "bolt.heart.fill"
+        case .sleep: "bed.double.fill"
+        case .auditC: "wineglass.fill"
+        case .phq15: "figure.stand"
+        }
+    }
+
+    var questionCount: Int {
+        switch self {
+        case .phq9: 9
+        case .gad7: 7
+        case .who5: 5
+        case .pss10: 10
+        case .sleep: 5
+        case .auditC: 3
+        case .phq15: 15
+        }
+    }
+
+    var intro: String {
+        switch self {
+        case .phq9, .gad7:
+            "Over the last 2 weeks, how often have you felt this way?"
+        case .who5:
+            "Over the last 2 weeks, how often did you feel this way?"
+        case .pss10:
+            "In the last month, how often have you felt this way?"
+        case .sleep:
+            "Think about your sleep over the past two weeks."
+        case .auditC:
+            "A few honest questions about alcohol — there are no wrong answers."
+        case .phq15:
+            "Over the last 4 weeks, how much have these bothered you?"
+        }
+    }
+
+    var humanizedQuestions: [String] {
+        switch self {
+        case .phq9: HumanizedQuestions.phq9
+        case .gad7: HumanizedQuestions.gad7
+        case .who5: HumanizedQuestions.who5
+        case .pss10: HumanizedQuestions.pss10
+        case .sleep: HumanizedQuestions.sleep
+        case .auditC: HumanizedQuestions.auditC
+        case .phq15: HumanizedQuestions.phq15
+        }
+    }
+
+    var likertOptions: [QuestionOption] {
+        switch self {
+        case .phq9, .gad7, .phq15:
+            friendlyFrequencyOptions
+        case .who5:
+            who5Options
+        case .pss10:
+            pss10Options
+        case .sleep:
+            sleepOptions
+        case .auditC:
+            auditCOptions
+        }
     }
 }

@@ -29,12 +29,24 @@ final class EnhancementTests: XCTestCase {
     @MainActor
     func testAssessmentHubViewModelCompletionTracking() {
         let profile = UserProfile(phq9Score: 5, gad7Score: 0, bmi: 24, physicalActivityMinutes: 90)
+        profile.phq9Complete = true
         let vm = AssessmentHubViewModel(profile: profile)
 
         XCTAssertTrue(vm.phq9Completed)
         XCTAssertFalse(vm.gad7Completed)
         XCTAssertTrue(vm.metabolicCompleted)
         XCTAssertFalse(vm.labDataCompleted)
+    }
+
+    @MainActor
+    func testAssessmentHubViewModelZeroScoreWithCompletionFlag() {
+        let profile = UserProfile(phq9Score: 0, gad7Score: 0)
+        profile.phq9Complete = true
+        profile.gad7Complete = true
+        let vm = AssessmentHubViewModel(profile: profile)
+
+        XCTAssertTrue(vm.phq9Completed)
+        XCTAssertTrue(vm.gad7Completed)
     }
 
     @MainActor
@@ -64,26 +76,88 @@ final class EnhancementTests: XCTestCase {
         XCTAssertNil(BMICalculatorResult.calculate(weightKg: 70, heightCm: -10))
     }
 
+    func testWeightUnitConversion() {
+        XCTAssertEqual(WeightUnit.lb.toKg(154), 69.85, accuracy: 0.1)
+        XCTAssertEqual(HeightUnit.toCm(feet: 5, inches: 9), 175.26, accuracy: 0.1)
+    }
+
     // MARK: - LabResults
 
     func testLabResultsEncodingDecoding() throws {
         let original = LabResults(
+            ast: 25,
+            alt: 30,
+            alp: 70,
+            ft4: 16,
+            esr: 8,
+            vitaminB12: 350,
+            folate: 12,
             cholesterol: 5.2,
-            bloodPressureSystolic: 120,
-            bloodPressureDiastolic: 80,
             bloodSugar: 5.5,
             hba1c: 5.7,
+            bloodPressureSystolic: 120,
+            bloodPressureDiastolic: 80,
             lastUpdated: Date(timeIntervalSince1970: 1_700_000_000)
         )
 
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(LabResults.self, from: data)
 
+        XCTAssertEqual(decoded.ast, original.ast)
+        XCTAssertEqual(decoded.ft4, original.ft4)
+        XCTAssertEqual(decoded.vitaminB12, original.vitaminB12)
         XCTAssertEqual(decoded.cholesterol, original.cholesterol)
         XCTAssertEqual(decoded.bloodPressureSystolic, original.bloodPressureSystolic)
-        XCTAssertEqual(decoded.bloodPressureDiastolic, original.bloodPressureDiastolic)
-        XCTAssertEqual(decoded.bloodSugar, original.bloodSugar)
-        XCTAssertEqual(decoded.hba1c, original.hba1c)
+    }
+
+    func testLabReportOCRParsing() {
+        let text = "ALT 32 U/L\nVitamin B12 450\nHbA1c 5.6%"
+        let parsed = LabReportOCRService.parseReportText(text)
+        XCTAssertFalse(parsed.isEmpty)
+    }
+
+    // MARK: - Privacy
+
+    func testAbstractedRiskProfileExcludesLabAndGeneticsKeys() throws {
+        let profile = AbstractedRiskProfile(
+            cardioRisk: .moderate,
+            mentalHealth: .mild,
+            metabolic: .low,
+            correlations: ["test"]
+        )
+        let json = try JSONEncoder().encode(profile)
+        let text = String(data: json, encoding: .utf8) ?? ""
+
+        XCTAssertFalse(text.contains("cholesterol"))
+        XCTAssertFalse(text.contains("labResults"))
+        XCTAssertFalse(text.contains("genetics"))
+        XCTAssertFalse(text.contains("vitaminB12"))
+    }
+
+    func testGLMPromptDoesNotIncludeLabFields() {
+        let prompt = GLMPrompts.userPrompt(for: .placeholder)
+        XCTAssertFalse(prompt.contains("cholesterol"))
+        XCTAssertFalse(prompt.contains("BRCA"))
+    }
+
+    // MARK: - Genetics
+
+    func testGeneticsCatalogHighlighting() {
+        var genetics = GeneticsProfile.empty
+        genetics.familyBreastOvarian = true
+        let highlights = GeneticsCatalog.highlighted(for: genetics)
+        XCTAssertTrue(highlights.contains { $0.id == "brca" })
+    }
+
+    // MARK: - HealthKit trends mock
+
+    func testMockDailySeriesGeneration() {
+        let points = MockHealthDataProvider.generateSeries(for: .steps, days: 7, base: WeeklyHealthSnapshot(
+            averageDailySteps: 5000,
+            priorAverageDailySteps: 5000,
+            fetchedAt: .now
+        ))
+        XCTAssertEqual(points.count, 7)
     }
 
     // MARK: - MotivationalQuotes

@@ -26,6 +26,15 @@ struct BMICalculatorResult {
 enum BMICategory {
     case underweight, normal, overweight, obese
 
+    static func from(bmi: Double) -> BMICategory {
+        switch bmi {
+        case 0..<18.5: .underweight
+        case 18.5..<25: .normal
+        case 25..<30: .overweight
+        default: .obese
+        }
+    }
+
     var displayName: String {
         switch self {
         case .underweight: "Underweight"

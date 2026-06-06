@@ -10,6 +10,7 @@ struct AssessHubView: View {
     @State private var activeSheet: AssessSheet?
     @State private var selectedHealthMetric: HealthKitMetric?
     @State private var healthSnapshot: WeeklyHealthSnapshot = .empty
+    @State private var showGenetics = false
 
     private var profile: UserProfile? { profiles.first }
 
@@ -20,23 +21,20 @@ struct AssessHubView: View {
                     header
 
                     sectionHeader("Questionnaires")
-                    AssessmentCard(
-                        title: "PHQ-9",
-                        subtitle: "Depression screening (9 questions)",
-                        icon: "brain.head.profile",
-                        isCompleted: viewModel.phq9Completed
-                    ) { activeSheet = .phq9 }
-
-                    AssessmentCard(
-                        title: "GAD-7",
-                        subtitle: "Anxiety screening (7 questions)",
-                        icon: "waveform.path.ecg",
-                        isCompleted: viewModel.gad7Completed
-                    ) { activeSheet = .gad7 }
+                    ForEach(QuestionnaireKind.allCases) { kind in
+                        AssessmentCard(
+                            title: kind.title,
+                            subtitle: kind.subtitle,
+                            icon: kind.icon,
+                            isCompleted: completion(for: kind)
+                        ) {
+                            activeSheet = .questionnaire(kind)
+                        }
+                    }
 
                     AssessmentCard(
                         title: "Metabolic Inputs",
-                        subtitle: "BMI and weekly activity",
+                        subtitle: "Weight, height, BMI and weekly activity",
                         icon: "figure.walk",
                         isCompleted: viewModel.metabolicCompleted
                     ) { activeSheet = .metabolic }
@@ -44,7 +42,7 @@ struct AssessHubView: View {
                     sectionHeader("Lab & Calculators")
                     AssessmentCard(
                         title: "Lab Results",
-                        subtitle: "Cholesterol, BP, blood sugar, HbA1c & more",
+                        subtitle: "Basic & extensive biomarker panels",
                         icon: "cross.vial.fill",
                         isCompleted: viewModel.labDataCompleted
                     ) {
@@ -52,15 +50,20 @@ struct AssessHubView: View {
                     }
 
                     AssessmentCard(
-                        title: "BMI Calculator",
-                        subtitle: "Calculate body mass index",
-                        icon: "scalemass.fill",
+                        title: "Health Calculators",
+                        subtitle: "Calories, BP, diabetes risk & more",
+                        icon: "function",
                         isCompleted: false
-                    ) { activeSheet = .bmiCalculator }
+                    ) { activeSheet = .calculators }
 
                     sectionHeader("HealthKit Data")
                     ForEach(HealthKitMetric.allCases) { metric in
                         healthKitCard(metric: metric)
+                    }
+
+                    sectionHeader("Longevity")
+                    GeneticsBetaCard(isCompleted: viewModel.geneticsCompleted) {
+                        showGenetics = true
                     }
                 }
                 .padding()
@@ -71,32 +74,34 @@ struct AssessHubView: View {
                 refreshViewModel()
                 Task { await refreshHealthKit() }
             }
-            .onChange(of: profiles.first?.phq9Score) { refreshViewModel() }
-            .onChange(of: profiles.first?.gad7Score) { refreshViewModel() }
+            .onChange(of: profiles.first?.phq9Complete) { refreshViewModel() }
+            .onChange(of: profiles.first?.gad7Complete) { refreshViewModel() }
+            .onChange(of: profiles.first?.who5Complete) { refreshViewModel() }
             .onChange(of: profiles.first?.bmi) { refreshViewModel() }
             .onChange(of: profiles.first?.physicalActivityMinutes) { refreshViewModel() }
-            .sheet(item: $activeSheet) { sheet in
+            .sheet(item: $activeSheet, onDismiss: { refreshViewModel() }) { sheet in
                 switch sheet {
-                case .phq9:
-                    PHQ9SheetView(profile: profile, modelContext: modelContext) {
-                        refreshViewModel()
-                    }
-                case .gad7:
-                    GAD7SheetView(profile: profile, modelContext: modelContext) {
+                case .questionnaire(let kind):
+                    QuestionnaireSheetView(kind: kind, profile: profile, modelContext: modelContext) {
                         refreshViewModel()
                     }
                 case .metabolic:
-                    MetabolicSheetView(profile: profile, modelContext: modelContext) {
+                    MetabolicSheetView(profile: profile, modelContext: modelContext, healthSnapshot: healthSnapshot) {
                         refreshViewModel()
                     }
                 case .labData(let userProfile):
                     LabDataInputView(profile: userProfile)
-                case .bmiCalculator:
-                    BMICalculatorView()
+                case .calculators:
+                    CalculatorsHubView(profile: profile, healthSnapshot: healthSnapshot)
                 }
             }
             .sheet(item: $selectedHealthMetric) { metric in
                 HealthKitDetailView(metric: metric, snapshot: healthSnapshot)
+            }
+            .sheet(isPresented: $showGenetics, onDismiss: { refreshViewModel() }) {
+                if let profile {
+                    GeneticsBetaFlowView(profile: profile)
+                }
             }
         }
     }
@@ -117,6 +122,18 @@ struct AssessHubView: View {
             .font(.headline)
             .foregroundStyle(NHSTheme.primaryBlue)
             .padding(.top, 4)
+    }
+
+    private func completion(for kind: QuestionnaireKind) -> Bool {
+        switch kind {
+        case .phq9: viewModel.phq9Completed
+        case .gad7: viewModel.gad7Completed
+        case .who5: viewModel.who5Completed
+        case .pss10: viewModel.pss10Completed
+        case .sleep: viewModel.sleepCompleted
+        case .auditC: viewModel.auditCCompleted
+        case .phq15: viewModel.phq15Completed
+        }
     }
 
     private func healthKitCard(metric: HealthKitMetric) -> some View {
@@ -170,119 +187,54 @@ struct AssessHubView: View {
 }
 
 private enum AssessSheet: Identifiable {
-    case phq9
-    case gad7
+    case questionnaire(QuestionnaireKind)
     case metabolic
     case labData(UserProfile)
-    case bmiCalculator
+    case calculators
 
     var id: String {
         switch self {
-        case .phq9: "phq9"
-        case .gad7: "gad7"
+        case .questionnaire(let kind): "q-\(kind.rawValue)"
         case .metabolic: "metabolic"
         case .labData(let profile): "lab-\(profile.persistentModelID)"
-        case .bmiCalculator: "bmi"
+        case .calculators: "calculators"
         }
-    }
-}
-
-// MARK: - Questionnaire Sheets
-
-private struct PHQ9SheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    let profile: UserProfile?
-    let modelContext: ModelContext
-    var onSave: () -> Void
-
-    @State private var answers: [Int?] = Array(repeating: nil, count: 9)
-
-    private var isComplete: Bool { answers.allSatisfy { $0 != nil } }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                PHQ9View(answers: $answers)
-                    .padding()
-            }
-            .background(NHSTheme.background)
-            .navigationTitle("PHQ-9")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!isComplete)
-                }
-            }
-        }
-    }
-
-    private func save() {
-        guard let profile, isComplete else { return }
-        profile.phq9Score = answers.compactMap { $0 }.reduce(0, +)
-        try? modelContext.save()
-        onSave()
-        dismiss()
-    }
-}
-
-private struct GAD7SheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    let profile: UserProfile?
-    let modelContext: ModelContext
-    var onSave: () -> Void
-
-    @State private var answers: [Int?] = Array(repeating: nil, count: 7)
-
-    private var isComplete: Bool { answers.allSatisfy { $0 != nil } }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                GAD7View(answers: $answers)
-                    .padding()
-            }
-            .background(NHSTheme.background)
-            .navigationTitle("GAD-7")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!isComplete)
-                }
-            }
-        }
-    }
-
-    private func save() {
-        guard let profile, isComplete else { return }
-        profile.gad7Score = answers.compactMap { $0 }.reduce(0, +)
-        try? modelContext.save()
-        onSave()
-        dismiss()
     }
 }
 
 private struct MetabolicSheetView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appDependencies) private var dependencies
     let profile: UserProfile?
     let modelContext: ModelContext
+    let healthSnapshot: WeeklyHealthSnapshot
     var onSave: () -> Void
 
-    @State private var bmi = 25.0
+    @State private var bmi: Double?
+    @State private var weightKg: Double?
+    @State private var heightCm: Double?
     @State private var activityMinutes = 60
+    @State private var snapshot: WeeklyHealthSnapshot
+
+    init(profile: UserProfile?, modelContext: ModelContext, healthSnapshot: WeeklyHealthSnapshot, onSave: @escaping () -> Void) {
+        self.profile = profile
+        self.modelContext = modelContext
+        self.healthSnapshot = healthSnapshot
+        self.onSave = onSave
+        _snapshot = State(initialValue: healthSnapshot)
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                MetabolicInputView(bmi: $bmi, physicalActivityMinutes: $activityMinutes)
-                    .padding()
+                MetabolicInputView(
+                    bmi: $bmi,
+                    weightKg: $weightKg,
+                    heightCm: $heightCm,
+                    physicalActivityMinutes: $activityMinutes,
+                    healthSnapshot: snapshot
+                )
+                .padding()
             }
             .background(NHSTheme.background)
             .navigationTitle("Metabolic")
@@ -293,20 +245,34 @@ private struct MetabolicSheetView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
+                        .disabled(bmi == nil)
                 }
+            }
+            .task {
+                await refreshSnapshot()
             }
             .onAppear {
                 if let profile {
-                    bmi = profile.bmi ?? 25.0
+                    bmi = profile.bmi
+                    weightKg = profile.weightKg
+                    heightCm = profile.heightCm
                     activityMinutes = profile.physicalActivityMinutes ?? 60
                 }
             }
         }
     }
 
+    private func refreshSnapshot() async {
+        if let fetched = try? await dependencies.healthDataProvider.fetchWeeklySnapshot() {
+            snapshot = fetched
+        }
+    }
+
     private func save() {
-        guard let profile else { return }
+        guard let profile, let bmi else { return }
         profile.bmi = bmi
+        profile.weightKg = weightKg
+        profile.heightCm = heightCm
         profile.physicalActivityMinutes = activityMinutes
         try? modelContext.save()
         onSave()

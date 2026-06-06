@@ -3,6 +3,7 @@ import Foundation
 enum AppTab: Hashable {
     case dashboard
     case assess
+    case trends
     case profile
 }
 
