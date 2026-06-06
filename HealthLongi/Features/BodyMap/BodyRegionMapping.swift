@@ -1,7 +1,16 @@
 import SwiftUI
 
 enum BodyRegionMapping {
-    static func color(for region: BodyRegion, profile: AbstractedRiskProfile, snapshot: WeeklyHealthSnapshot) -> Color {
+    static func color(
+        for region: BodyRegion,
+        profile: AbstractedRiskProfile,
+        snapshot: WeeklyHealthSnapshot,
+        labResults: LabResults? = nil
+    ) -> Color {
+        if let labRisk = labRisk(for: region, labs: labResults) {
+            return NHSTheme.riskColor(for: strongestRisk(baseRisk(for: region, profile: profile, snapshot: snapshot), labRisk))
+        }
+
         switch region {
         case .brain:
             return NHSTheme.mentalColor(for: profile.mentalHealth)
@@ -19,6 +28,130 @@ enum BodyRegionMapping {
         case .leftShoulder, .rightHip, .leftKnee:
             return profile.phq15RiskColor
         }
+    }
+
+    private static func baseRisk(for region: BodyRegion, profile: AbstractedRiskProfile, snapshot: WeeklyHealthSnapshot) -> RiskLevel {
+        switch region {
+        case .brain:
+            return riskLevel(for: profile.mentalHealth)
+        case .heart:
+            return profile.cardioRisk
+        case .lungs:
+            guard let spo2 = snapshot.oxygenSaturation else { return profile.cardioRisk }
+            if spo2 >= 95 { return .low }
+            if spo2 >= 90 { return .moderate }
+            return .high
+        case .abdomen:
+            return profile.metabolic
+        case .leftShoulder, .rightHip, .leftKnee:
+            return riskLevel(for: profile.mentalHealth)
+        }
+    }
+
+    private static func labRisk(for region: BodyRegion, labs: LabResults?) -> RiskLevel? {
+        guard let labs, labs.hasAnyValue else { return nil }
+
+        switch region {
+        case .brain:
+            return strongestRisk([
+                thyroidRisk(tsh: labs.tsh, ft4: labs.ft4),
+                lowMarkerRisk(labs.vitaminB12, moderateBelow: 300, highBelow: 200),
+                lowMarkerRisk(labs.folate, moderateBelow: 4, highBelow: 3),
+                lowMarkerRisk(labs.vitaminD, moderateBelow: 50, highBelow: 30),
+                highMarkerRisk(labs.cortisol, moderateAbove: 550, highAbove: 700)
+            ])
+        case .heart:
+            return strongestRisk([
+                highMarkerRisk(labs.ldlCholesterol, moderateAbove: 3.0, highAbove: 4.9),
+                highMarkerRisk(labs.cholesterol, moderateAbove: 5.0, highAbove: 7.5),
+                highMarkerRisk(labs.triglycerides, moderateAbove: 1.7, highAbove: 5.6),
+                highMarkerRisk(labs.apoB, moderateAbove: 1.0, highAbove: 1.3),
+                bloodPressureRisk(systolic: labs.bloodPressureSystolic, diastolic: labs.bloodPressureDiastolic),
+                highMarkerRisk(labs.crp, moderateAbove: 3, highAbove: 10)
+            ])
+        case .lungs:
+            return strongestRisk([
+                highMarkerRisk(labs.crp, moderateAbove: 3, highAbove: 10),
+                highMarkerRisk(labs.esr, moderateAbove: 20, highAbove: 40)
+            ])
+        case .abdomen:
+            return strongestRisk([
+                highMarkerRisk(labs.hba1c, moderateAbove: 42, highAbove: 48),
+                highMarkerRisk(labs.bloodSugar, moderateAbove: 7.8, highAbove: 11.1),
+                highMarkerRisk(labs.triglycerides, moderateAbove: 1.7, highAbove: 5.6),
+                highMarkerRisk(labs.waistCircumference, moderateAbove: 94, highAbove: 102),
+                highMarkerRisk(labs.alt, moderateAbove: 45, highAbove: 100),
+                highMarkerRisk(labs.ast, moderateAbove: 40, highAbove: 100),
+                kidneyRisk(egfr: labs.egfr)
+            ])
+        case .leftShoulder, .rightHip, .leftKnee:
+            return strongestRisk([
+                highMarkerRisk(labs.crp, moderateAbove: 3, highAbove: 10),
+                highMarkerRisk(labs.esr, moderateAbove: 20, highAbove: 40),
+                highMarkerRisk(labs.ck, moderateAbove: 300, highAbove: 1_000),
+                lowMarkerRisk(labs.vitaminD, moderateBelow: 50, highBelow: 30)
+            ])
+        }
+    }
+
+    private static func riskLevel(for flag: MentalFlag) -> RiskLevel {
+        switch flag {
+        case .none, .mild: .low
+        case .moderateDepression, .moderateAnxiety: .moderate
+        case .severeDepression, .highAnxiety: .high
+        }
+    }
+
+    private static func strongestRisk(_ first: RiskLevel, _ second: RiskLevel) -> RiskLevel {
+        riskValue(first) >= riskValue(second) ? first : second
+    }
+
+    private static func strongestRisk(_ risks: [RiskLevel?]) -> RiskLevel? {
+        risks.compactMap(\.self).max { riskValue($0) < riskValue($1) }
+    }
+
+    private static func riskValue(_ risk: RiskLevel) -> Int {
+        switch risk {
+        case .low: 0
+        case .moderate: 1
+        case .high: 2
+        }
+    }
+
+    private static func highMarkerRisk(_ value: Double?, moderateAbove: Double, highAbove: Double) -> RiskLevel? {
+        guard let value else { return nil }
+        if value >= highAbove { return .high }
+        if value >= moderateAbove { return .moderate }
+        return .low
+    }
+
+    private static func lowMarkerRisk(_ value: Double?, moderateBelow: Double, highBelow: Double) -> RiskLevel? {
+        guard let value else { return nil }
+        if value <= highBelow { return .high }
+        if value <= moderateBelow { return .moderate }
+        return .low
+    }
+
+    private static func bloodPressureRisk(systolic: Int?, diastolic: Int?) -> RiskLevel? {
+        guard systolic != nil || diastolic != nil else { return nil }
+        if (systolic ?? 0) >= 140 || (diastolic ?? 0) >= 90 { return .high }
+        if (systolic ?? 0) >= 130 || (diastolic ?? 0) >= 80 { return .moderate }
+        return .low
+    }
+
+    private static func kidneyRisk(egfr: Double?) -> RiskLevel? {
+        guard let egfr else { return nil }
+        if egfr < 45 { return .high }
+        if egfr < 60 { return .moderate }
+        return .low
+    }
+
+    private static func thyroidRisk(tsh: Double?, ft4: Double?) -> RiskLevel? {
+        if let tsh, tsh < 0.1 || tsh > 10 { return .high }
+        if let tsh, tsh < 0.4 || tsh > 4.5 { return .moderate }
+        if let ft4, ft4 < 9 || ft4 > 24 { return .moderate }
+        guard tsh != nil || ft4 != nil else { return nil }
+        return .low
     }
 }
 

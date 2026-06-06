@@ -25,7 +25,6 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
     @State private var selectedDomain: HealthDomain?
     @State private var dashboardSection: DashboardSection = .overview
-    @State private var activeQuestionnaire: QuestionnaireKind?
 
     init() {
         _viewModel = State(initialValue: DashboardViewModel())
@@ -71,14 +70,6 @@ struct DashboardView: View {
                 .sheet(item: $selectedDomain) { domain in
                     DomainDetailView(domain: domain, profile: profile)
                 }
-                .sheet(item: $activeQuestionnaire) { kind in
-                    if let userProfile = profiles.first {
-                        QuestionnaireSheetView(kind: kind, profile: userProfile, modelContext: modelContext) {
-                            viewModel.markQuestionnaireDataUpdated()
-                            Task { await runAssessmentIfNeeded(reason: .newData) }
-                        }
-                    }
-                }
         }
     }
 
@@ -123,7 +114,7 @@ struct DashboardView: View {
             BodyMapView(
                 profile: profile,
                 snapshot: viewModel.healthSnapshot ?? .empty,
-                onSelectQuestionnaire: { activeQuestionnaire = $0 }
+                labResults: profiles.first?.labResults
             )
 
             if let lastRefreshed = viewModel.lastRefreshedAt {

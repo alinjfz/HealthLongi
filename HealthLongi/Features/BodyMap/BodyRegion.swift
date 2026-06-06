@@ -22,14 +22,4 @@ enum BodyRegion: String, CaseIterable, Identifiable {
         case .leftKnee: "Knee"
         }
     }
-
-    var questionnaire: QuestionnaireKind {
-        switch self {
-        case .brain: .phq9
-        case .heart: .gad7
-        case .lungs: .pss10
-        case .abdomen: .phq15
-        case .leftShoulder, .rightHip, .leftKnee: .phq15
-        }
-    }
 }
