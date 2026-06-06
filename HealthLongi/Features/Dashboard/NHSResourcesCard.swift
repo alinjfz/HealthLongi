@@ -39,10 +39,12 @@ struct NHSResourcesCard: View {
                                 .font(.caption)
                                 .foregroundStyle(NHSTheme.textSecondary)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .nhsCard()
     }
 }
