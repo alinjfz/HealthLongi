@@ -1,6 +1,6 @@
 import Foundation
 
-enum BodyRegion: String, CaseIterable, Identifiable {
+enum BodyRegion: String, CaseIterable, Identifiable, Codable {
     case brain
     case heart
     case lungs

@@ -13,6 +13,7 @@ final class DashboardViewModel {
     var motivationalQuote: MotivationalQuote = MotivationalQuotes.random()
     var completedTipIDs: Set<String> = []
     var lastRefreshedAt: Date?
+    var healthSignals: [HealthSignal] = []
 
     /// Tracks which data sources have new data since the last assessment
     var hasNewHealthData = false
@@ -63,7 +64,6 @@ final class DashboardViewModel {
             healthSnapshot = snapshot
             lastRefreshedAt = .now
 
-            // Check if there's new data since last assessment
             if let lastAssessment = lastAssessmentTimestamp {
                 hasNewHealthData = snapshot.fetchedAt > lastAssessment
             } else if snapshot.averageDailySteps > 0 {
@@ -76,6 +76,22 @@ final class DashboardViewModel {
 
     func markQuestionnaireDataUpdated() {
         hasNewQuestionnaireData = true
+    }
+
+    func refreshSignals(profile: UserProfile?) {
+        guard let profile else {
+            healthSignals = []
+            return
+        }
+
+        let snapshot = healthSnapshot ?? .empty
+        let labFlags = LabFlagEvaluator.evaluate(labs: profile.labResults ?? .empty)
+        let input = SignalEngineInput.from(
+            profile: profile,
+            snapshot: snapshot,
+            labFlags: labFlags
+        )
+        healthSignals = HealthSignalEngine.evaluate(input)
     }
 
     func toggleTipCompletion(_ tipID: String) {

@@ -5,6 +5,7 @@ struct WeeklyHealthSnapshot: Sendable, Equatable {
     var averageDailySteps: Int
     var hasStepData: Bool = false
     var priorAverageDailySteps: Int?
+    var priorAverageRestingHeartRate: Double?
     var activeEnergyBurned: Double?       // kcal/day average
     var distanceWalkingRunning: Double?   // km/day average
 
@@ -39,6 +40,7 @@ struct WeeklyHealthSnapshot: Sendable, Equatable {
         averageDailySteps: 0,
         hasStepData: false,
         priorAverageDailySteps: nil,
+        priorAverageRestingHeartRate: nil,
         activeEnergyBurned: nil,
         distanceWalkingRunning: nil,
         averageRestingHeartRate: nil,

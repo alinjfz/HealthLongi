@@ -11,6 +11,7 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
     @State private var selectedDomain: HealthDomain?
     @State private var activeQuestionnaire: QuestionnaireKind?
+    @State private var selectedSignal: HealthSignal?
 
     init() {
         _viewModel = State(initialValue: DashboardViewModel())
@@ -32,6 +33,7 @@ struct DashboardView: View {
                 .onAppear {
                     viewModel = DashboardViewModel(healthDataProvider: dependencies.healthDataProvider)
                     viewModel.loadLatest(from: assessments)
+                    viewModel.refreshSignals(profile: profiles.first)
                     Task { await refreshAndAssess(reason: .appOpened) }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -44,11 +46,16 @@ struct DashboardView: View {
                 }
                 .onChange(of: profiles.first?.phq9Score) {
                     viewModel.markQuestionnaireDataUpdated()
+                    viewModel.refreshSignals(profile: profiles.first)
                     Task { await runAssessmentIfNeeded(reason: .newData) }
                 }
                 .onChange(of: profiles.first?.gad7Score) {
                     viewModel.markQuestionnaireDataUpdated()
+                    viewModel.refreshSignals(profile: profiles.first)
                     Task { await runAssessmentIfNeeded(reason: .newData) }
+                }
+                .sheet(item: $selectedSignal) { signal in
+                    HealthSignalDetailSheet(signal: signal)
                 }
                 .sheet(item: $selectedDomain) { domain in
                     DomainDetailView(domain: domain, profile: profile)
@@ -89,6 +96,10 @@ struct DashboardView: View {
                 completedTipIDs: viewModel.completedTipIDs,
                 onToggleTip: { viewModel.toggleTipCompletion($0) }
             )
+
+            HealthSignalsCard(signals: viewModel.healthSignals) { signal in
+                selectedSignal = signal
+            }
 
             BodyMapView(
                 profile: profile,
@@ -154,10 +165,11 @@ struct DashboardView: View {
         defer { viewModel.isUpdatingAssessment = false }
 
         await viewModel.refreshHealthKit()
-        if let snapshot = viewModel.healthSnapshot {
+        if let profile = profiles.first, let snapshot = viewModel.healthSnapshot {
             profile.syncMetabolicData(from: snapshot)
             try? modelContext.save()
         }
+        viewModel.refreshSignals(profile: profiles.first)
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profile,
             orchestrator: dependencies.orchestrator,
@@ -173,6 +185,7 @@ struct DashboardView: View {
             profile.syncMetabolicData(from: snapshot)
             try? modelContext.save()
         }
+        viewModel.refreshSignals(profile: profiles.first)
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profiles.first,
             orchestrator: dependencies.orchestrator,
