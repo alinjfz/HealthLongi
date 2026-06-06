@@ -321,8 +321,13 @@ struct LabDataInputView: View {
             profile.labImportHistory.insert(record, at: 0)
         }
 
+        let reportDate = pendingImportText.flatMap { LabReportImportService.parseReportDate(from: $0) }
         labs.lastUpdated = .now
         profile.labResults = labs
+        profile.labResultsHistory.insert(
+            LabResultsSnapshot(recordedAt: reportDate ?? .now, results: labs),
+            at: 0
+        )
         errorMessage = nil
         try? modelContext.save()
         dismiss()

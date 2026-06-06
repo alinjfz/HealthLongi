@@ -44,6 +44,7 @@ final class UserProfile {
 
     @Attribute(.externalStorage) private var manualHealthDataJSON: Data?
     @Attribute(.externalStorage) private var labResultsData: Data?
+    @Attribute(.externalStorage) private var labResultsHistoryData: Data?
     @Attribute(.externalStorage) private var labImportHistoryData: Data?
     @Attribute(.externalStorage) private var geneticsProfileData: Data?
 
@@ -83,6 +84,16 @@ final class UserProfile {
         }
     }
 
+    var labResultsHistory: [LabResultsSnapshot] {
+        get {
+            guard let labResultsHistoryData else { return [] }
+            return (try? JSONDecoder().decode([LabResultsSnapshot].self, from: labResultsHistoryData)) ?? []
+        }
+        set {
+            labResultsHistoryData = try? JSONEncoder().encode(newValue)
+        }
+    }
+
     var labImportHistory: [LabImportRecord] {
         get {
             guard let labImportHistoryData else { return [] }
@@ -91,6 +102,16 @@ final class UserProfile {
         set {
             labImportHistoryData = try? JSONEncoder().encode(newValue)
         }
+    }
+
+    /// Seeds history from the current lab snapshot when upgrading from single-snapshot storage.
+    func migrateLabResultsHistoryIfNeeded() {
+        guard labResultsHistory.isEmpty,
+              let current = labResults,
+              current.hasAnyValue else { return }
+        labResultsHistory = [
+            LabResultsSnapshot(recordedAt: current.lastUpdated, results: current)
+        ]
     }
 
     var manualHealthData: ManualHealthData? {

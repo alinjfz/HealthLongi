@@ -1,20 +1,6 @@
 import SwiftUI
 import SwiftData
 
-private enum DashboardSection: String, CaseIterable, Identifiable {
-    case overview
-    case trends
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .overview: "Overview"
-        case .trends: "Trends"
-        }
-    }
-}
-
 struct DashboardView: View {
     @Environment(\.appDependencies) private var dependencies
     @Environment(\.modelContext) private var modelContext
@@ -24,7 +10,6 @@ struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel
     @State private var selectedDomain: HealthDomain?
-    @State private var dashboardSection: DashboardSection = .overview
     @State private var activeQuestionnaire: QuestionnaireKind?
 
     init() {
@@ -82,19 +67,7 @@ struct DashboardView: View {
     private var dashboardContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Picker("Section", selection: $dashboardSection) {
-                    ForEach(DashboardSection.allCases) { section in
-                        Text(section.title).tag(section)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                switch dashboardSection {
-                case .overview:
-                    overviewContent
-                case .trends:
-                    TrendsContentView()
-                }
+                overviewContent
             }
             .padding()
         }
@@ -132,6 +105,8 @@ struct DashboardView: View {
                 }
                 .foregroundStyle(NHSTheme.textSecondary)
             }
+
+            TrendsContentView()
 
             DomainStatusCard(
                 title: "Cardiovascular",
