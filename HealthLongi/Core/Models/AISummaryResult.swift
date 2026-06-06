@@ -7,8 +7,6 @@ struct AISummaryResult: Sendable, Equatable {
 
     static let fallback = AISummaryResult(
         markdownSummary: """
-        ## Your health summary
-
         Based on your assessment scores, we recommend speaking with your GP for personalised advice.
 
         **Next steps:**

@@ -104,20 +104,10 @@ struct PersonalizedSummaryCard: View {
                     .foregroundStyle(.orange)
             }
 
-            if let attributed = try? AttributedString(
-                markdown: summaryText,
-                options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-            ) {
-                Text(attributed)
-                    .font(.subheadline)
-                    .foregroundStyle(NHSTheme.textPrimary)
-                    .lineLimit(isSummaryExpanded ? nil : 8)
-            } else {
-                Text(summaryText)
-                    .font(.subheadline)
-                    .foregroundStyle(NHSTheme.textPrimary)
-                    .lineLimit(isSummaryExpanded ? nil : 8)
-            }
+            MarkdownSummaryText(
+                content: summaryText,
+                maxBlocks: isSummaryExpanded ? nil : 5
+            )
 
             if summaryText.count > 200 {
                 Button(isSummaryExpanded ? "Show Less" : "Read Full Summary") {

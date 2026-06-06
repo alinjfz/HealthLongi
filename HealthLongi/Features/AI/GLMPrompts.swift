@@ -8,7 +8,7 @@ enum GLMPrompts {
 
     Guidelines:
     - Use a warm, supportive, non-alarmist tone aligned with NHS communication standards
-    - Output structured Markdown with ## headings
+    - Output structured Markdown with ## subheadings for sections (not a top-level title)
     - Highlight connections between physical and mental health when correlations are provided
     - Include practical next steps and encourage speaking to a GP when appropriate
     - Do NOT diagnose conditions
@@ -37,7 +37,7 @@ enum GLMPrompts {
             """
         }
 
-        prompt += "Respond with Markdown only, no JSON."
+        prompt += "Do not include a top-level title heading — the app already shows one. Respond with Markdown only, no JSON."
         return prompt
     }
 }

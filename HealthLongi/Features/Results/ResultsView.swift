@@ -86,16 +86,7 @@ struct ResultsView: View {
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
 
-            if let attributed = try? AttributedString(
-                markdown: summary.markdownSummary,
-                options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-            ) {
-                Text(attributed)
-                    .foregroundStyle(NHSTheme.textPrimary)
-            } else {
-                Text(summary.markdownSummary)
-                    .foregroundStyle(NHSTheme.textPrimary)
-            }
+            MarkdownSummaryText(content: summary.markdownSummary)
         }
         .nhsCard()
     }
