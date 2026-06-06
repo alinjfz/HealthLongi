@@ -8,12 +8,18 @@
 
 /* Begin PBXFileReference section */
 		297B7B5F2FD460F300272A39 /* HealthLongi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HealthLongi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29A100012FD460F300272A39 /* HealthLongiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HealthLongiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		297B7B612FD460F300272A39 /* HealthLongi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HealthLongi;
+			sourceTree = "<group>";
+		};
+		29A100022FD460F300272A39 /* HealthLongiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HealthLongiTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -33,6 +39,7 @@
 			isa = PBXGroup;
 			children = (
 				297B7B612FD460F300272A39 /* HealthLongi */,
+				29A100022FD460F300272A39 /* HealthLongiTests */,
 				297B7B602FD460F300272A39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +48,7 @@
 			isa = PBXGroup;
 			children = (
 				297B7B5F2FD460F300272A39 /* HealthLongi.app */,
+				29A100012FD460F300272A39 /* HealthLongiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -69,6 +77,28 @@
 			productName = HealthLongi;
 			productReference = 297B7B5F2FD460F300272A39 /* HealthLongi.app */;
 			productType = "com.apple.product-type.application";
+		};
+		29A100032FD460F300272A39 /* HealthLongiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 29A100062FD460F400272A39 /* Build configuration list for PBXNativeTarget "HealthLongiTests" */;
+			buildPhases = (
+				29A100042FD460F300272A39 /* Sources */,
+				29A100052FD460F300272A39 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				29A100082FD460F400272A39 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				29A100022FD460F300272A39 /* HealthLongiTests */,
+			);
+			name = HealthLongiTests;
+			packageProductDependencies = (
+			);
+			productName = HealthLongiTests;
+			productReference = 29A100012FD460F300272A39 /* HealthLongiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -100,6 +130,7 @@
 			projectRoot = "";
 			targets = (
 				297B7B5E2FD460F300272A39 /* HealthLongi */,
+				29A100032FD460F300272A39 /* HealthLongiTests */,
 			);
 		};
 /* End PBXProject section */
@@ -114,6 +145,16 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		29A100052FD460F300272A39 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		297B7B5B2FD460F300272A39 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -122,7 +163,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		29A100042FD460F300272A39 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		29A100072FD460F400272A39 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 297B7B572FD460F300272A39 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 297B7B5E2FD460F300272A39;
+			remoteInfo = HealthLongi;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		29A100082FD460F400272A39 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 297B7B5E2FD460F300272A39 /* HealthLongi */;
+			targetProxy = 29A100072FD460F400272A39 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		297B7B682FD460F400272A39 /* Debug */ = {
@@ -248,19 +314,26 @@
 		};
 		297B7B6B2FD460F400272A39 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 297B7B612FD460F300272A39 /* HealthLongi */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LRD4995DAT;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+                ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+                CODE_SIGN_ENTITLEMENTS = HealthLongi/HealthLongi.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                CURRENT_PROJECT_VERSION = 1;
+                DEVELOPMENT_TEAM = LRD4995DAT;
+                ENABLE_PREVIEWS = YES;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_KEY_CFBundleDisplayName = "Vitals & Mind";
+                INFOPLIST_KEY_GLM_API_KEY = "$(GLM_API_KEY)";
+                INFOPLIST_KEY_NSHealthShareUsageDescription = "Vitals & Mind reads your steps, heart rate, and sleep to calculate on-device health scores. Raw data never leaves your device.";
+                INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Vitals & Mind may save health insights locally on your device.";
+                INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+                INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -280,19 +353,26 @@
 		};
 		297B7B6C2FD460F400272A39 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 297B7B612FD460F300272A39 /* HealthLongi */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LRD4995DAT;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+                ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+                CODE_SIGN_ENTITLEMENTS = HealthLongi/HealthLongi.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                CURRENT_PROJECT_VERSION = 1;
+                DEVELOPMENT_TEAM = LRD4995DAT;
+                ENABLE_PREVIEWS = YES;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_KEY_CFBundleDisplayName = "Vitals & Mind";
+                INFOPLIST_KEY_GLM_API_KEY = "$(GLM_API_KEY)";
+                INFOPLIST_KEY_NSHealthShareUsageDescription = "Vitals & Mind reads your steps, heart rate, and sleep to calculate on-device health scores. Raw data never leaves your device.";
+                INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Vitals & Mind may save health insights locally on your device.";
+                INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+                INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -307,6 +387,48 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		29A100092FD460F400272A39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LRD4995DAT;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pahlavan.HealthLongiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HealthLongi.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HealthLongi";
+			};
+			name = Debug;
+		};
+		29A1000A2FD460F400272A39 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LRD4995DAT;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pahlavan.HealthLongiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HealthLongi.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HealthLongi";
 			};
 			name = Release;
 		};
@@ -327,6 +449,15 @@
 			buildConfigurations = (
 				297B7B6B2FD460F400272A39 /* Debug */,
 				297B7B6C2FD460F400272A39 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		29A100062FD460F400272A39 /* Build configuration list for PBXNativeTarget "HealthLongiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				29A100092FD460F400272A39 /* Debug */,
+				29A1000A2FD460F400272A39 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
