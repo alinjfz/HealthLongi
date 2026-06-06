@@ -8,6 +8,7 @@ struct PersonalHealthContextBuilder {
         at date: Date = .now
     ) -> PersonalHealthContext {
         let labFlags = LabFlagEvaluator.evaluate(labs: profile.labResults ?? .empty, at: date)
+        let completeness = CompletenessScoreCalculator.calculate(profile: profile, snapshot: snapshot)
 
         return PersonalHealthContext(
             lastUpdated: date,
@@ -17,7 +18,7 @@ struct PersonalHealthContextBuilder {
             labFlags: labFlags,
             appointmentPrep: profile.personalHealthContext?.appointmentPrep,
             weeklyInsightHistory: profile.personalHealthContext?.weeklyInsightHistory ?? [],
-            completenessScore: profile.personalHealthContext?.completenessScore ?? 0
+            completenessScore: completeness.score
         )
     }
 

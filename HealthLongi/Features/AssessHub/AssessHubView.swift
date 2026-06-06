@@ -13,14 +13,26 @@ struct AssessHubView: View {
     @State private var healthKitLoadError: String?
     @State private var tooltipMetric: HealthKitMetric?
     @State private var showGenetics = false
+    @State private var showCompletenessChecklist = false
 
     private var profile: UserProfile? { profiles.first }
+
+    private var completeness: CompletenessScoreResult {
+        CompletenessScoreCalculator.calculate(
+            profile: profile ?? UserProfile(),
+            snapshot: healthSnapshot
+        )
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 20) {
                     header
+
+                    CompletenessScoreCard(score: completeness.score) {
+                        showCompletenessChecklist = true
+                    }
 
                     sectionHeader("Questionnaires")
                     ForEach(QuestionnaireKind.activeCases) { kind in
@@ -107,6 +119,26 @@ struct AssessHubView: View {
                     GeneticsBetaFlowView(profile: profile)
                 }
             }
+            .sheet(isPresented: $showCompletenessChecklist) {
+                CompletenessChecklistSheet(missingItems: completeness.missingItems) { item in
+                    handleCompletenessSelection(item)
+                }
+            }
+        }
+    }
+
+    private func handleCompletenessSelection(_ item: CompletenessItemID) {
+        switch item {
+        case .phq9: activeSheet = .questionnaire(.phq9)
+        case .gad7: activeSheet = .questionnaire(.gad7)
+        case .who5: activeSheet = .questionnaire(.who5)
+        case .pss10: activeSheet = .questionnaire(.pss10)
+        case .auditC: activeSheet = .questionnaire(.auditC)
+        case .phq15: activeSheet = .questionnaire(.phq15)
+        case .labBiomarkers:
+            if let profile { activeSheet = .labData(profile) }
+        case .healthKitCore, .demographics:
+            break
         }
     }
 
@@ -233,6 +265,9 @@ struct AssessHubView: View {
             let snapshot = try await dependencies.healthDataProvider.fetchWeeklySnapshot()
             healthSnapshot = snapshot
             profile?.syncMetabolicData(from: snapshot)
+            if let profile {
+                PersonalHealthContextBuilder.rebuild(profile: profile, snapshot: snapshot)
+            }
             try? modelContext.save()
         } catch {
             healthSnapshot = .empty
