@@ -38,6 +38,8 @@ struct DomainDetailView: View {
     let domain: HealthDomain
     let profile: AbstractedRiskProfile
 
+    @State private var showDataSourceInfo = false
+
     private var indicatorColor: Color {
         switch domain {
         case .cardiovascular: NHSTheme.riskColor(for: profile.cardioRisk)
@@ -50,12 +52,7 @@ struct DomainDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    DomainStatusCard(
-                        title: domain.title,
-                        subtitle: domain.subtitle,
-                        color: indicatorColor,
-                        icon: domain.icon
-                    )
+                    domainHeaderCard
 
                     switch domain {
                     case .cardiovascular:
@@ -75,6 +72,36 @@ struct DomainDetailView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showDataSourceInfo = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(NHSTheme.primaryBlue)
+                    }
+                }
+            }
+            .sheet(isPresented: $showDataSourceInfo) {
+                DataSourceInfoSheet(domain: domain)
+            }
+        }
+    }
+
+    private var domainHeaderCard: some View {
+        HStack(spacing: 12) {
+            DomainStatusCard(
+                title: domain.title,
+                subtitle: domain.subtitle,
+                color: indicatorColor,
+                icon: domain.icon
+            )
+
+            Button {
+                showDataSourceInfo = true
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.title3)
+                    .foregroundStyle(NHSTheme.primaryBlue)
             }
         }
     }

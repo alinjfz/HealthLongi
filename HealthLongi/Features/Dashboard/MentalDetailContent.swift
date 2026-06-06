@@ -54,10 +54,26 @@ struct MentalDetailContent: View {
                 .foregroundStyle(NHSTheme.primaryBlue)
 
             ForEach(resourceLinks) { link in
-                Link(link.title, destination: link.url)
-                    .font(.subheadline)
+                Link(destination: link.url) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(link.title)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(NHSTheme.primaryBlue)
+                            Text(link.description)
+                                .font(.caption)
+                                .foregroundStyle(NHSTheme.textSecondary)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(NHSTheme.textSecondary)
+                    }
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .nhsCard()
     }
 
