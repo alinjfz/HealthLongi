@@ -11,6 +11,7 @@ struct QuestionnaireSheetView: View {
 
     @State private var answers: [Int?]
     @State private var showCompletion = false
+    @State private var savedScore: Int?
 
     init(kind: QuestionnaireKind, profile: UserProfile?, modelContext: ModelContext, onSave: @escaping () -> Void) {
         self.kind = kind
@@ -22,11 +23,19 @@ struct QuestionnaireSheetView: View {
 
     private var isComplete: Bool { answers.allSatisfy { $0 != nil } }
 
+    private var auditCInterpretation: String? {
+        guard kind == .auditC, let savedScore else { return nil }
+        return QuestionnaireKind.auditCScoreInterpretation(for: savedScore)
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if showCompletion {
-                    QuestionnaireCompletionView(title: kind.title) {
+                    QuestionnaireCompletionView(
+                        title: kind.title,
+                        scoreInterpretation: auditCInterpretation
+                    ) {
                         dismiss()
                     }
                 } else {
@@ -56,6 +65,7 @@ struct QuestionnaireSheetView: View {
     private func save() {
         guard let profile, isComplete else { return }
         let score = answers.compactMap { $0 }.reduce(0, +)
+        savedScore = score
         profile.markQuestionnaireComplete(kind, score: score)
         try? modelContext.save()
         onSave()

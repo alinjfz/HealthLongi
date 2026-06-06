@@ -8,6 +8,7 @@ struct QuestionOption: Identifiable {
 
 struct LikertQuestionView: View {
     let question: String
+    var footer: String? = nil
     let options: [QuestionOption]
     @Binding var selectedScore: Int?
 
@@ -16,6 +17,12 @@ struct LikertQuestionView: View {
             Text(question)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(NHSTheme.textPrimary)
+
+            if let footer {
+                Text(footer)
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+            }
 
             ForEach(options) { option in
                 Button {
@@ -121,9 +128,14 @@ struct GenericLikertQuestionnaireView: View {
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
 
+            if let sections = kind.contextSections {
+                AuditCContextCard(sections: sections)
+            }
+
             ForEach(kind.humanizedQuestions.indices, id: \.self) { index in
                 LikertQuestionView(
                     question: kind.humanizedQuestions[index],
+                    footer: kind.questionFooter(at: index),
                     options: options(for: index),
                     selectedScore: binding(for: index)
                 )
@@ -163,5 +175,35 @@ struct GenericLikertQuestionnaireView: View {
                 answers[index] = newValue
             }
         )
+    }
+}
+
+private struct AuditCContextCard: View {
+    let sections: [(title: String, body: String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("About this screening", systemImage: "info.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            ForEach(sections.indices, id: \.self) { index in
+                let section = sections[index]
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(section.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NHSTheme.textPrimary)
+                    Text(section.body)
+                        .font(.caption)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+            }
+
+            Link(destination: QuestionnaireKind.auditCNHSAlcoholURL) {
+                Label("NHS alcohol advice", systemImage: "arrow.up.right.square")
+                    .font(.caption.weight(.medium))
+            }
+        }
+        .nhsCard()
     }
 }

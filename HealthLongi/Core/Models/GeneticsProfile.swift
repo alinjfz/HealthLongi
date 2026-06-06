@@ -12,6 +12,9 @@ struct GeneticsProfile: Codable, Sendable, Equatable {
     var familyColon: Bool
     var familyDiabetes: Bool
     var reportViewed: Bool
+    var mockUploadCompleted: Bool
+    var uploadedAt: Date?
+    var mockVariantIDs: [String]
 
     static let empty = GeneticsProfile(
         quizCompleted: false,
@@ -23,7 +26,10 @@ struct GeneticsProfile: Codable, Sendable, Equatable {
         familyBreastOvarian: false,
         familyColon: false,
         familyDiabetes: false,
-        reportViewed: false
+        reportViewed: false,
+        mockUploadCompleted: false,
+        uploadedAt: nil,
+        mockVariantIDs: []
     )
 }
 
@@ -35,7 +41,7 @@ struct GeneticsCondition: Identifiable, Hashable {
     let summary: String
 }
 
-enum GeneticsCategory: String, CaseIterable, Identifiable {
+enum GeneticsCategory: String, CaseIterable, Identifiable, Codable {
     case cancer
     case cardiovascular
     case metabolic

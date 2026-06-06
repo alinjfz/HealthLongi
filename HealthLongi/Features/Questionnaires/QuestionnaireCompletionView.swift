@@ -2,6 +2,7 @@ import SwiftUI
 
 struct QuestionnaireCompletionView: View {
     let title: String
+    var scoreInterpretation: String?
     var onDone: () -> Void
 
     var body: some View {
@@ -14,10 +15,23 @@ struct QuestionnaireCompletionView: View {
                 .font(.title2.bold())
                 .foregroundStyle(NHSTheme.primaryBlue)
 
-            Text("Your \(title) check-in has been saved. We'll use this privately to support your health insights — you won't see a score here.")
-                .font(.subheadline)
-                .foregroundStyle(NHSTheme.textSecondary)
-                .multilineTextAlignment(.center)
+            if let scoreInterpretation {
+                Text(scoreInterpretation)
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .nhsCard()
+
+                Text("This is for your information only — not a medical diagnosis.")
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Your \(title) check-in has been saved. We'll use this privately to support your health insights — you won't see a score here.")
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
 
             Button("Done") { onDone() }
                 .buttonStyle(NHSPrimaryButtonStyle())

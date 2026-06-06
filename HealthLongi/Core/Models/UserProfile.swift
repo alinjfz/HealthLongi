@@ -278,7 +278,7 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
         case .gad7: "GAD-7"
         case .who5: "WHO-5"
         case .pss10: "PSS-10"
-        case .sleep: "Sleep Check-in"
+        case .sleep: "Sleep Quality Check-in"
         case .auditC: "AUDIT-C"
         case .phq15: "PHQ-15"
         }
@@ -290,7 +290,7 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
         case .gad7: "Worry & anxiety check-in (7 questions)"
         case .who5: "Wellbeing index (5 questions)"
         case .pss10: "Stress check-in (10 questions)"
-        case .sleep: "Sleep quality (5 questions)"
+        case .sleep: "Your subjective sleep experience (5 questions)"
         case .auditC: "Alcohol screening (3 questions)"
         case .phq15: "Physical symptoms (15 questions)"
         }
@@ -302,7 +302,7 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
         case .gad7: "waveform.path.ecg"
         case .who5: "sun.max.fill"
         case .pss10: "bolt.heart.fill"
-        case .sleep: "bed.double.fill"
+        case .sleep: "moon.zzz.fill"
         case .auditC: "wineglass.fill"
         case .phq15: "figure.stand"
         }
@@ -329,7 +329,7 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
         case .pss10:
             "In the last month, how often have you felt this way?"
         case .sleep:
-            "Think about your sleep over the past two weeks."
+            "This asks how you feel about your sleep over the past two weeks. For tracked hours from your watch or phone, see Sleep Duration under HealthKit Data in the Assess tab."
         case .auditC:
             "A few honest questions about alcohol — there are no wrong answers."
         case .phq15:
@@ -363,4 +363,40 @@ enum QuestionnaireKind: String, CaseIterable, Identifiable {
             auditCOptions
         }
     }
+
+    /// Extra context shown above AUDIT-C questions.
+    var contextSections: [(title: String, body: String)]? {
+        guard self == .auditC else { return nil }
+        return [
+            (
+                "What is AUDIT-C?",
+                "A short 3-question alcohol screen used in GP surgeries. It helps identify drinking patterns that may affect your health."
+            ),
+            (
+                "What counts as a standard drink?",
+                "In the UK, one unit is about 8g of alcohol — roughly half a pint of beer, a small glass of wine, or a single measure of spirits."
+            ),
+            (
+                "Your privacy",
+                "Answers stay on your device and are never sent to AI or external services."
+            )
+        ]
+    }
+
+    /// Per-question footnotes (index → text).
+    func questionFooter(at index: Int) -> String? {
+        guard self == .auditC, index == 1 else { return nil }
+        return "Count UK units: e.g. one pint of beer ≈ 2 units, one large wine glass ≈ 3 units."
+    }
+
+    static func auditCScoreInterpretation(for score: Int) -> String {
+        switch score {
+        case 0...4:
+            "Your responses suggest low-risk drinking. Keep within NHS guidance of no more than 14 units per week, spread over several days."
+        default:
+            "A score of 5 or more can indicate higher-risk drinking. Consider speaking with your GP or visiting NHS alcohol support — this is not a diagnosis."
+        }
+    }
+
+    static let auditCNHSAlcoholURL = URL(string: "https://www.nhs.uk/live-well/alcohol-advice/")!
 }

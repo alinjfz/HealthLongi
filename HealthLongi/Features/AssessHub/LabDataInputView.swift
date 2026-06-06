@@ -1,5 +1,7 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
+import UniformTypeIdentifiers
 
 struct LabDataInputView: View {
     @Environment(\.dismiss) private var dismiss
@@ -9,7 +11,12 @@ struct LabDataInputView: View {
     @State private var selectedPanel: LabPanel = .basic
     @State private var fieldTexts: [LabBiomarker: String] = [:]
     @State private var errorMessage: String?
-    @State private var showScanComingSoon = false
+    @State private var importErrorMessage: String?
+    @State private var isImporting = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var showPDFImporter = false
+    @State private var parsedForReview: [LabReportOCRService.ParsedValue]?
+    @State private var showReviewSheet = false
 
     var body: some View {
         NavigationStack {
@@ -19,13 +26,37 @@ struct LabDataInputView: View {
                         .font(.caption)
                         .foregroundStyle(NHSTheme.textSecondary)
 
-                    Button {
-                        showScanComingSoon = true
-                    } label: {
-                        Label("Scan lab report (coming soon)", systemImage: "doc.viewfinder")
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        Label("Scan lab report photo", systemImage: "doc.viewfinder")
                     }
-                    .disabled(true)
-                    .foregroundStyle(NHSTheme.textSecondary)
+                    .disabled(isImporting)
+
+                    Button {
+                        showPDFImporter = true
+                    } label: {
+                        Label("Upload PDF report", systemImage: "doc.fill")
+                    }
+                    .disabled(isImporting)
+
+                    if isImporting {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Reading report on device…")
+                                .font(.caption)
+                                .foregroundStyle(NHSTheme.textSecondary)
+                        }
+                    }
+
+                    if let importErrorMessage {
+                        Text(importErrorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("Import")
+                } footer: {
+                    Text("Photos and PDFs are processed on your device using OCR. Nothing is uploaded.")
+                        .font(.caption2)
                 }
 
                 Section {
@@ -76,10 +107,29 @@ struct LabDataInputView: View {
                 }
             }
             .onAppear { loadExisting() }
-            .alert("Coming soon", isPresented: $showScanComingSoon) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("On-device lab report scanning with Vision OCR will be available in a future update. Your images will never leave your device.")
+            .onChange(of: selectedPhoto) { _, newItem in
+                guard let newItem else { return }
+                Task { await importPhoto(newItem) }
+            }
+            .fileImporter(
+                isPresented: $showPDFImporter,
+                allowedContentTypes: [.pdf],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    importPDF(url)
+                case .failure(let error):
+                    importErrorMessage = error.localizedDescription
+                }
+            }
+            .sheet(isPresented: $showReviewSheet, onDismiss: { parsedForReview = nil }) {
+                if let parsedForReview {
+                    LabReportReviewSheet(parsedValues: parsedForReview) { values in
+                        applyParsedValues(values)
+                    }
+                }
             }
         }
     }
@@ -98,6 +148,61 @@ struct LabDataInputView: View {
                 fieldTexts[marker] = value
             }
         }
+    }
+
+    @MainActor
+    private func importPhoto(_ item: PhotosPickerItem) async {
+        isImporting = true
+        importErrorMessage = nil
+        defer {
+            isImporting = false
+            selectedPhoto = nil
+        }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                importErrorMessage = "Could not load the selected image."
+                return
+            }
+            let text = try await LabReportImportService.recognizeText(from: image)
+            presentParsed(LabReportImportService.parseImportedText(text))
+        } catch {
+            importErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func importPDF(_ url: URL) {
+        isImporting = true
+        importErrorMessage = nil
+        defer { isImporting = false }
+
+        do {
+            let text = try LabReportImportService.extractText(from: url)
+            presentParsed(LabReportImportService.parseImportedText(text))
+        } catch {
+            importErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func presentParsed(_ values: [LabReportOCRService.ParsedValue]) {
+        if values.isEmpty {
+            importErrorMessage = "No recognised biomarkers found. Try a clearer photo or enter values manually."
+            return
+        }
+        parsedForReview = values
+        showReviewSheet = true
+    }
+
+    private func applyParsedValues(_ values: [LabReportOCRService.ParsedValue]) {
+        for item in values {
+            if item.marker.isIntegerField {
+                fieldTexts[item.marker] = "\(Int(item.value))"
+            } else {
+                fieldTexts[item.marker] = String(format: "%.2f", item.value)
+            }
+        }
+        importErrorMessage = nil
     }
 
     private func save() {

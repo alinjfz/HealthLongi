@@ -1,22 +1,31 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct GeneticsBetaFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Bindable var profile: UserProfile
 
-    @State private var step: GeneticsStep = .quiz
+    @State private var step: GeneticsStep = .upload
     @State private var draft = GeneticsProfile.empty
+    @State private var showFileImporter = false
 
     enum GeneticsStep {
-        case quiz, report, browse
+        case upload, quiz, report, browse
     }
 
     var body: some View {
         NavigationStack {
             Group {
                 switch step {
+                case .upload:
+                    GeneticsUploadView(
+                        hasUpload: draft.mockUploadCompleted,
+                        onUpload: { showFileImporter = true },
+                        onSkip: { step = .quiz },
+                        onContinue: { step = draft.quizCompleted ? .report : .quiz }
+                    )
                 case .quiz:
                     FamilyHistoryQuizView(draft: $draft) {
                         draft.quizCompleted = true
@@ -27,6 +36,9 @@ struct GeneticsBetaFlowView: View {
                     }
                 case .report:
                     MockGeneticsReportView(profile: draft) {
+                        draft.reportViewed = true
+                        profile.geneticsProfile = draft
+                        try? modelContext.save()
                         step = .browse
                     }
                 case .browse:
@@ -43,10 +55,90 @@ struct GeneticsBetaFlowView: View {
             .onAppear {
                 if let existing = profile.geneticsProfile {
                     draft = existing
-                    step = existing.quizCompleted ? .report : .quiz
+                    step = initialStep(for: existing)
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.plainText, .json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success:
+                    applyMockUpload()
+                case .failure:
+                    break
                 }
             }
         }
+    }
+
+    private func initialStep(for profile: GeneticsProfile) -> GeneticsStep {
+        if !profile.mockUploadCompleted && !profile.quizCompleted {
+            return .upload
+        }
+        if profile.quizCompleted {
+            return .report
+        }
+        return .upload
+    }
+
+    private func applyMockUpload() {
+        draft.mockUploadCompleted = true
+        draft.uploadedAt = .now
+        draft.mockVariantIDs = MockDNAReport.defaultUploadSelection()
+        profile.geneticsProfile = draft
+        try? modelContext.save()
+    }
+}
+
+struct GeneticsUploadView: View {
+    let hasUpload: Bool
+    var onUpload: () -> Void
+    var onSkip: () -> Void
+    var onContinue: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("DNA Report Upload")
+                    .font(.title2.bold())
+                    .foregroundStyle(NHSTheme.primaryBlue)
+
+                Text("Upload a DNA report file to preview a mock variant chart. Any file type is accepted for this demo — real parsing is not performed yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.textSecondary)
+
+                Label("Demo preview — not a genetic test", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                Button(action: onUpload) {
+                    Label(hasUpload ? "Replace DNA report" : "Upload DNA report", systemImage: "arrow.up.doc.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(NHSPrimaryButtonStyle())
+
+                if hasUpload {
+                    Label("Mock DNA data loaded", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+
+                    Button("Continue") { onContinue() }
+                        .buttonStyle(NHSPrimaryButtonStyle())
+                }
+
+                Button("Skip — use family history only") { onSkip() }
+                    .font(.subheadline)
+                    .foregroundStyle(NHSTheme.primaryBlue)
+            }
+            .padding()
+        }
+        .background(NHSTheme.background)
     }
 }
 
@@ -96,8 +188,12 @@ struct MockGeneticsReportView: View {
     let profile: GeneticsProfile
     var onBrowse: () -> Void
 
+    private var uploadVariants: [MockDNAVariant] {
+        MockDNAReport.variants(for: profile.mockVariantIDs)
+    }
+
     private var highlights: [GeneticsCondition] {
-        GeneticsCatalog.highlighted(for: profile)
+        MockDNAReport.highlightedConditions(for: profile)
     }
 
     var body: some View {
@@ -115,9 +211,18 @@ struct MockGeneticsReportView: View {
                     .font(.title2.bold())
                     .foregroundStyle(NHSTheme.primaryBlue)
 
-                Text("Based on your family history answers, these hereditary panels might be worth discussing with a GP in a real clinical setting.")
+                Text("Based on your family history and mock DNA upload, these hereditary panels might be worth discussing with a GP in a real clinical setting.")
                     .font(.subheadline)
                     .foregroundStyle(NHSTheme.textSecondary)
+
+                if profile.mockUploadCompleted {
+                    DNAVariantChartView(variants: uploadVariants)
+                    GeneConditionMapView(variants: uploadVariants)
+                }
+
+                Text("Highlighted conditions")
+                    .font(.headline)
+                    .foregroundStyle(NHSTheme.primaryBlue)
 
                 ForEach(highlights) { condition in
                     VStack(alignment: .leading, spacing: 8) {
@@ -207,7 +312,7 @@ struct GeneticsBetaCard: View {
                             .foregroundStyle(.white)
                             .clipShape(Capsule())
                     }
-                    Text("Family history & hereditary insights")
+                    Text("Family history, DNA preview & hereditary insights")
                         .font(.caption)
                         .foregroundStyle(NHSTheme.textSecondary)
                 }

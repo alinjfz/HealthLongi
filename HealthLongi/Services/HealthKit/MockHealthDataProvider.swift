@@ -6,6 +6,7 @@ struct MockHealthDataProvider: HealthDataProviding {
 
     init(snapshot: WeeklyHealthSnapshot = WeeklyHealthSnapshot(
         averageDailySteps: 4200,
+        hasStepData: true,
         priorAverageDailySteps: 6800,
         activeEnergyBurned: 320,
         distanceWalkingRunning: 3.2,

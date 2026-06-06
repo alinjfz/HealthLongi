@@ -149,6 +149,60 @@ final class EnhancementTests: XCTestCase {
         XCTAssertTrue(highlights.contains { $0.id == "brca" })
     }
 
+    func testMockDNAReportLinksVariantsToCatalogGenes() {
+        let brcaVariant = MockDNAReport.variants.first { $0.gene == "BRCA1" }
+        XCTAssertNotNil(brcaVariant)
+        let conditions = MockDNAReport.conditions(for: brcaVariant!)
+        XCTAssertTrue(conditions.contains { $0.genes.contains("BRCA1") })
+    }
+
+    func testMockDNAReportHighlightedConditionsMergeUploadAndFamily() {
+        var genetics = GeneticsProfile.empty
+        genetics.familyHeart = true
+        genetics.mockVariantIDs = MockDNAReport.defaultUploadSelection()
+        let highlights = MockDNAReport.highlightedConditions(for: genetics)
+        XCTAssertTrue(highlights.contains { $0.category == .cardiovascular })
+        XCTAssertTrue(highlights.contains { $0.genes.contains("BRCA1") || $0.genes.contains("MYH7") })
+    }
+
+    // MARK: - AUDIT-C
+
+    func testAuditCScoreInterpretationBands() {
+        XCTAssertTrue(QuestionnaireKind.auditCScoreInterpretation(for: 3).contains("low-risk"))
+        XCTAssertTrue(QuestionnaireKind.auditCScoreInterpretation(for: 6).contains("GP"))
+    }
+
+    // MARK: - HealthKit availability
+
+    func testHealthKitMetricAvailabilityWithData() {
+        let snapshot = WeeklyHealthSnapshot(
+            averageDailySteps: 5000,
+            hasStepData: true,
+            averageRestingHeartRate: 70,
+            fetchedAt: .now
+        )
+        XCTAssertEqual(
+            HealthKitMetricAvailability.availability(for: .steps, snapshot: snapshot, isHealthDataAvailable: true),
+            .available
+        )
+        XCTAssertEqual(
+            HealthKitMetricAvailability.availability(for: .sleep, snapshot: snapshot, isHealthDataAvailable: true),
+            .noData
+        )
+    }
+
+    func testHealthKitMetricAvailabilityWithoutStepData() {
+        let snapshot = WeeklyHealthSnapshot(averageDailySteps: 0, hasStepData: false, fetchedAt: .now)
+        XCTAssertEqual(
+            HealthKitMetricAvailability.availability(for: .steps, snapshot: snapshot, isHealthDataAvailable: true),
+            .noData
+        )
+        XCTAssertEqual(
+            HealthKitMetricAvailability.availability(for: .steps, snapshot: snapshot, isHealthDataAvailable: false),
+            .unavailable
+        )
+    }
+
     // MARK: - HealthKit trends mock
 
     func testMockDailySeriesGeneration() {

@@ -46,8 +46,8 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now)!
         let twoWeeksAgo = Calendar.current.date(byAdding: .day, value: -14, to: now)!
 
-        async let currentSteps = averageDailySteps(from: weekAgo, to: now)
-        async let priorSteps = averageDailySteps(from: twoWeeksAgo, to: weekAgo)
+        async let currentStepsResult = averageDailySteps(from: weekAgo, to: now)
+        async let priorStepsResult = averageDailySteps(from: twoWeeksAgo, to: weekAgo)
         async let activeEnergy = averageQuantity(from: weekAgo, to: now,
             identifier: .activeEnergyBurned, unit: .kilocalorie(), perDay: true)
         async let distance = averageQuantity(from: weekAgo, to: now,
@@ -63,18 +63,22 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
         async let bodyFat = latestQuantity(for: .bodyFatPercentage, unit: .percent())
         async let mindful = averageMindfulMinutes(from: weekAgo, to: now)
 
+        let currentSteps = try await currentStepsResult
+        let priorSteps = try await priorStepsResult
+
         return WeeklyHealthSnapshot(
-            averageDailySteps: try await currentSteps,
-            priorAverageDailySteps: try await priorSteps,
+            averageDailySteps: currentSteps.average,
+            hasStepData: currentSteps.hasData,
+            priorAverageDailySteps: priorSteps.hasData ? priorSteps.average : nil,
             activeEnergyBurned: try await activeEnergy,
             distanceWalkingRunning: try await distance,
             averageRestingHeartRate: try await restingHR,
             heartRateVariability: try await hrv,
-            oxygenSaturation: try await spo2,
+            oxygenSaturation: normalizePercentage(try await spo2),
             averageSleepHours: try await sleep,
             bodyMass: try await mass,
             height: try await height,
-            bodyFatPercentage: try await bodyFat,
+            bodyFatPercentage: normalizePercentage(try await bodyFat),
             mindfulMinutes: try await mindful,
             fetchedAt: now
         )
@@ -348,8 +352,15 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
 
     // MARK: - Step Count
 
-    private func averageDailySteps(from start: Date, to end: Date) async throws -> Int {
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return 0 }
+    private struct StepAverageResult {
+        let average: Int
+        let hasData: Bool
+    }
+
+    private func averageDailySteps(from start: Date, to end: Date) async throws -> StepAverageResult {
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            return StepAverageResult(average: 0, hasData: false)
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
@@ -363,7 +374,10 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
 
             query.initialResultsHandler = { _, results, error in
                 if let error { continuation.resume(throwing: error); return }
-                guard let results else { continuation.resume(returning: 0); return }
+                guard let results else {
+                    continuation.resume(returning: StepAverageResult(average: 0, hasData: false))
+                    return
+                }
 
                 var total = 0.0
                 var days = 0
@@ -374,11 +388,17 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
                     }
                 }
                 let average = days > 0 ? Int(total / Double(days)) : 0
-                continuation.resume(returning: average)
+                continuation.resume(returning: StepAverageResult(average: average, hasData: days > 0))
             }
 
             healthStore.execute(query)
         }
+    }
+
+    private func normalizePercentage(_ value: Double?) -> Double? {
+        guard let value else { return nil }
+        if value > 0 && value <= 1.0 { return value * 100 }
+        return value
     }
 
     // MARK: - Resting Heart Rate

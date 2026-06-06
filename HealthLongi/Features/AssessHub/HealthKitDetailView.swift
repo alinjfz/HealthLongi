@@ -5,14 +5,19 @@ struct HealthKitDetailView: View {
 
     let metric: HealthKitMetric
     let snapshot: WeeklyHealthSnapshot
+    var availability: HealthKitMetricAvailability = .available
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    valueCard
-                    contextCard
-                    aboutCard
+                    if availability.isInteractive {
+                        valueCard
+                        contextCard
+                        aboutCard
+                    } else {
+                        unavailableCard
+                    }
                 }
                 .padding()
             }
@@ -25,6 +30,34 @@ struct HealthKitDetailView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Unavailable Card
+
+    private var unavailableCard: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "heart.text.square")
+                .font(.largeTitle)
+                .foregroundStyle(NHSTheme.textSecondary)
+
+            Text(metric.title)
+                .font(.headline)
+                .foregroundStyle(NHSTheme.textPrimary)
+
+            Text(availability.tooltipMessage)
+                .font(.subheadline)
+                .foregroundStyle(NHSTheme.textSecondary)
+                .multilineTextAlignment(.center)
+
+            if availability == .noData {
+                Text("This metric is read from Apple Health on your device.")
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .nhsCard()
     }
 
     // MARK: - Value Card
@@ -228,7 +261,7 @@ struct HealthKitDetailView: View {
         case .restingHeartRate:
             return "Resting heart rate reflects cardiovascular fitness. A lower resting HR typically indicates better heart efficiency and fitness."
         case .sleep:
-            return "Sleep duration and quality are closely linked to mental health, immune function, and metabolic regulation. The NHS recommends 7–9 hours for adults."
+            return "This is objective sleep time logged in Apple Health from your iPhone or Apple Watch — different from the subjective Sleep Quality Check-in questionnaire. Sleep duration is closely linked to mental health and metabolic regulation. The NHS recommends 7–9 hours for adults."
         case .activeEnergy:
             return "Active energy measures calories burned through physical activity beyond your basal metabolic rate. Higher values indicate a more active lifestyle."
         case .distance:
@@ -270,7 +303,7 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         switch self {
         case .steps: "Daily Steps"
         case .restingHeartRate: "Resting Heart Rate"
-        case .sleep: "Sleep"
+        case .sleep: "Sleep Duration"
         case .activeEnergy: "Active Energy"
         case .distance: "Walking & Running Distance"
         case .hrv: "Heart Rate Variability"
@@ -302,7 +335,7 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         switch self {
         case .steps: "figure.walk"
         case .restingHeartRate: "heart.fill"
-        case .sleep: "bed.double.fill"
+        case .sleep: "applewatch"
         case .activeEnergy: "flame.fill"
         case .distance: "point.topleft.down.to.point.bottomright.curvepath"
         case .hrv: "waveform.path.ecg"
@@ -331,7 +364,8 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
     }
 
     /// Short formatted display of the value from a snapshot
-    func shortDisplay(from snapshot: WeeklyHealthSnapshot) -> String {
+    func shortDisplay(from snapshot: WeeklyHealthSnapshot, availability: HealthKitMetricAvailability) -> String {
+        guard availability == .available else { return availability.displayValue }
         switch self {
         case .steps: return "\(snapshot.averageDailySteps)"
         case .restingHeartRate: return snapshot.averageRestingHeartRate.map { String(format: "%.0f", $0) } ?? "—"
@@ -345,6 +379,16 @@ enum HealthKitMetric: String, Identifiable, CaseIterable {
         case .bodyFat: return snapshot.bodyFatPercentage.map { String(format: "%.1f%%", $0) } ?? "—"
         case .mindfulMinutes: return snapshot.mindfulMinutes.map { String(format: "%.0f", $0) } ?? "—"
         }
+    }
+
+    /// Legacy helper for views that do not track availability.
+    func shortDisplay(from snapshot: WeeklyHealthSnapshot) -> String {
+        let availability = HealthKitMetricAvailability.availability(
+            for: self,
+            snapshot: snapshot,
+            isHealthDataAvailable: true
+        )
+        return shortDisplay(from: snapshot, availability: availability)
     }
 }
 

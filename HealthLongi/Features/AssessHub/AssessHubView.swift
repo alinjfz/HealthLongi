@@ -10,6 +10,8 @@ struct AssessHubView: View {
     @State private var activeSheet: AssessSheet?
     @State private var selectedHealthMetric: HealthKitMetric?
     @State private var healthSnapshot: WeeklyHealthSnapshot = .empty
+    @State private var healthKitLoadError: String?
+    @State private var tooltipMetric: HealthKitMetric?
     @State private var showGenetics = false
 
     private var profile: UserProfile? { profiles.first }
@@ -57,6 +59,12 @@ struct AssessHubView: View {
                     ) { activeSheet = .calculators }
 
                     sectionHeader("HealthKit Data")
+                    if let healthKitLoadError {
+                        Text(healthKitLoadError)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 4)
+                    }
                     ForEach(HealthKitMetric.allCases) { metric in
                         healthKitCard(metric: metric)
                     }
@@ -70,6 +78,9 @@ struct AssessHubView: View {
             }
             .background(NHSTheme.background)
             .navigationTitle("Assess")
+            .refreshable {
+                await refreshHealthKit()
+            }
             .onAppear {
                 refreshViewModel()
                 Task { await refreshHealthKit() }
@@ -96,7 +107,11 @@ struct AssessHubView: View {
                 }
             }
             .sheet(item: $selectedHealthMetric) { metric in
-                HealthKitDetailView(metric: metric, snapshot: healthSnapshot)
+                HealthKitDetailView(
+                    metric: metric,
+                    snapshot: healthSnapshot,
+                    availability: metricAvailability(for: metric)
+                )
             }
             .sheet(isPresented: $showGenetics, onDismiss: { refreshViewModel() }) {
                 if let profile {
@@ -136,40 +151,81 @@ struct AssessHubView: View {
         }
     }
 
+    private func metricAvailability(for metric: HealthKitMetric) -> HealthKitMetricAvailability {
+        HealthKitMetricAvailability.availability(
+            for: metric,
+            snapshot: healthSnapshot,
+            isHealthDataAvailable: dependencies.healthDataProvider.isHealthDataAvailable
+        )
+    }
+
     private func healthKitCard(metric: HealthKitMetric) -> some View {
-        Button {
-            selectedHealthMetric = metric
-        } label: {
-            HStack(spacing: 16) {
-                Image(systemName: metric.icon)
-                    .font(.title2)
-                    .foregroundStyle(NHSTheme.primaryBlue)
-                    .frame(width: 44, height: 44)
-                    .background(NHSTheme.primaryBlue.opacity(0.12))
-                    .clipShape(Circle())
+        let availability = metricAvailability(for: metric)
+        let isEnabled = availability.isInteractive
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(metric.title)
-                        .font(.headline)
-                        .foregroundStyle(NHSTheme.textPrimary)
-                    Text(metric.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(NHSTheme.textSecondary)
-                }
+        return HStack(spacing: 16) {
+            Image(systemName: metric.icon)
+                .font(.title2)
+                .foregroundStyle(isEnabled ? NHSTheme.primaryBlue : NHSTheme.textSecondary)
+                .frame(width: 44, height: 44)
+                .background((isEnabled ? NHSTheme.primaryBlue : NHSTheme.textSecondary).opacity(0.12))
+                .clipShape(Circle())
 
-                Spacer()
-
-                Text(metric.shortDisplay(from: healthSnapshot))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(NHSTheme.primaryBlue)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(metric.title)
+                    .font(.headline)
+                    .foregroundStyle(isEnabled ? NHSTheme.textPrimary : NHSTheme.textSecondary)
+                Text(metric.subtitle)
+                    .font(.caption)
                     .foregroundStyle(NHSTheme.textSecondary)
             }
-            .nhsCard()
+
+            Spacer()
+
+            Text(metric.shortDisplay(from: healthSnapshot, availability: availability))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isEnabled ? NHSTheme.primaryBlue : NHSTheme.textSecondary)
+
+            if isEnabled {
+                Button {
+                    selectedHealthMetric = metric
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    tooltipMetric = metric
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.body)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: Binding(
+                    get: { tooltipMetric == metric },
+                    set: { if !$0 { tooltipMetric = nil } }
+                )) {
+                    Text(availability.tooltipMessage)
+                        .font(.subheadline)
+                        .padding()
+                        .frame(maxWidth: 280)
+                        .presentationCompactAdaptation(.popover)
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.65)
+        .nhsCard()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEnabled {
+                selectedHealthMetric = metric
+            } else {
+                tooltipMetric = metric
+            }
+        }
     }
 
     private func refreshViewModel() {
@@ -177,11 +233,18 @@ struct AssessHubView: View {
     }
 
     private func refreshHealthKit() async {
+        healthKitLoadError = nil
+        guard dependencies.healthDataProvider.isHealthDataAvailable else {
+            healthSnapshot = .empty
+            healthKitLoadError = "HealthKit is not available on this device. Health metrics are disabled."
+            return
+        }
         do {
             try await dependencies.healthDataProvider.requestAuthorization()
             healthSnapshot = try await dependencies.healthDataProvider.fetchWeeklySnapshot()
         } catch {
             healthSnapshot = .empty
+            healthKitLoadError = error.localizedDescription
         }
     }
 }
