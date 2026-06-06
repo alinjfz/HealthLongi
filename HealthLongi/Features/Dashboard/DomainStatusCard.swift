@@ -43,6 +43,7 @@ struct DomainStatusCard: View {
             .nhsCard()
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .disabled(action == nil)
     }
 }

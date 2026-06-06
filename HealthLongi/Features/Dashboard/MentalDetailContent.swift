@@ -9,6 +9,7 @@ struct MentalDetailContent: View {
             recommendationsSection
             resourcesSection
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var riskSection: some View {
@@ -42,6 +43,7 @@ struct MentalDetailContent: View {
                 Label(item, systemImage: "checkmark.circle")
                     .font(.subheadline)
                     .foregroundStyle(NHSTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .nhsCard()

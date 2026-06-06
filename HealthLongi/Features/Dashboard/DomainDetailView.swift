@@ -63,6 +63,7 @@ struct DomainDetailView: View {
                         MetabolicDetailContent(riskLevel: profile.metabolic)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
             .background(NHSTheme.background)

@@ -92,6 +92,7 @@ struct NHSCardStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .background(NHSTheme.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 16))

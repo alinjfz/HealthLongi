@@ -14,6 +14,7 @@ struct DataSourceInfoSheet: View {
                     calculationSection
                     limitationsSection
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
             .background(NHSTheme.background)
