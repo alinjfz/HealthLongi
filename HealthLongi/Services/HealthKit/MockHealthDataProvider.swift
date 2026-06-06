@@ -2,6 +2,7 @@ import Foundation
 
 struct MockHealthDataProvider: HealthDataProviding {
     var snapshot: WeeklyHealthSnapshot
+    var isHealthDataAvailable: Bool = false
 
     init(snapshot: WeeklyHealthSnapshot = WeeklyHealthSnapshot(
         averageDailySteps: 4200,

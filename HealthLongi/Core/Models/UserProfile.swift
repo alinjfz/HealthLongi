@@ -18,6 +18,7 @@ final class UserProfile {
     var bmi: Double?
     var physicalActivityMinutes: Int?
 
+    @Attribute(.externalStorage) private var manualHealthDataJSON: Data?
     @Attribute(.externalStorage) private var labResultsData: Data?
 
     // MARK: - Date of Birth (computed from age)
@@ -52,6 +53,20 @@ final class UserProfile {
                 labResultsData = try? JSONEncoder().encode(newValue)
             } else {
                 labResultsData = nil
+            }
+        }
+    }
+
+    var manualHealthData: ManualHealthData? {
+        get {
+            guard let manualHealthDataJSON else { return nil }
+            return try? JSONDecoder().decode(ManualHealthData.self, from: manualHealthDataJSON)
+        }
+        set {
+            if let newValue {
+                manualHealthDataJSON = try? JSONEncoder().encode(newValue)
+            } else {
+                manualHealthDataJSON = nil
             }
         }
     }

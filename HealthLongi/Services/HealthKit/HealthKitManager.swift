@@ -4,6 +4,8 @@ import HealthKit
 final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
     private let healthStore = HKHealthStore()
 
+    var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
+
     private var readTypes: Set<HKObjectType> {
         var types = Set<HKObjectType>()
         // Activity
@@ -86,6 +88,22 @@ final class HealthKitManager: HealthDataProviding, @unchecked Sendable {
 
     func fetchBiologicalSex() -> HKBiologicalSex? {
         try? healthStore.biologicalSex().biologicalSex
+    }
+
+    func fetchProfileDemographics() async -> ProfileDemographicsSnapshot {
+        let sex: Sex? = {
+            guard let hk = fetchBiologicalSex() else { return nil }
+            switch hk {
+            case .female: return .female
+            case .male: return .male
+            default: return nil
+            }
+        }()
+
+        return ProfileDemographicsSnapshot(
+            dateOfBirth: fetchDateOfBirth(),
+            biologicalSex: sex
+        )
     }
 
     // MARK: - Generic quantity helpers
