@@ -14,6 +14,8 @@ final class DashboardViewModel {
     var completedTipIDs: Set<String> = []
     var lastRefreshedAt: Date?
     var healthSignals: [HealthSignal] = []
+    var weeklyInsightText: String?
+    var isLoadingWeeklyInsight = false
 
     /// Tracks which data sources have new data since the last assessment
     var hasNewHealthData = false
@@ -87,6 +89,17 @@ final class DashboardViewModel {
         let snapshot = healthSnapshot ?? .empty
         let context = PersonalHealthContextBuilder.rebuild(profile: profile, snapshot: snapshot)
         healthSignals = context.activeSignals
+    }
+
+    func refreshWeeklyInsight(profile: UserProfile?, ai: any OnDeviceHealthAIProviding) async {
+        guard let context = profile?.personalHealthContext else {
+            weeklyInsightText = nil
+            return
+        }
+
+        isLoadingWeeklyInsight = true
+        defer { isLoadingWeeklyInsight = false }
+        weeklyInsightText = await ai.generateWeeklyInsight(from: context)
     }
 
     func toggleTipCompletion(_ tipID: String) {

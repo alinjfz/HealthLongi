@@ -3,12 +3,17 @@ import SwiftUI
 struct HealthSignalDetailSheet: View {
     let signal: HealthSignal
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appDependencies) private var dependencies
+
+    @State private var aiExplanation: String?
+    @State private var isLoadingExplanation = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     headerSection
+                    aiExplanationSection
                     evidenceSection
                     if !signal.suggestedQuestions.isEmpty {
                         questionsSection
@@ -25,7 +30,34 @@ struct HealthSignalDetailSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .task {
+                await loadExplanation()
+            }
         }
+    }
+
+    private var aiExplanationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("What this means")
+                .font(.headline)
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            if isLoadingExplanation {
+                ProgressView()
+            } else {
+                Text(aiExplanation ?? signal.detail)
+                    .font(.body)
+                    .foregroundStyle(NHSTheme.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .nhsCard()
+    }
+
+    private func loadExplanation() async {
+        isLoadingExplanation = true
+        defer { isLoadingExplanation = false }
+        aiExplanation = await dependencies.onDeviceHealthAI.explainSignal(signal)
     }
 
     private var headerSection: some View {

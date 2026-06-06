@@ -101,6 +101,11 @@ struct DashboardView: View {
                 selectedSignal = signal
             }
 
+            WeeklyInsightCard(
+                insightText: viewModel.weeklyInsightText,
+                isLoading: viewModel.isLoadingWeeklyInsight
+            )
+
             BodyMapView(
                 profile: profile,
                 snapshot: viewModel.healthSnapshot ?? .empty,
@@ -171,6 +176,7 @@ struct DashboardView: View {
         }
         viewModel.refreshSignals(profile: profiles.first)
         try? modelContext.save()
+        await viewModel.refreshWeeklyInsight(profile: profiles.first, ai: dependencies.onDeviceHealthAI)
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profile,
             orchestrator: dependencies.orchestrator,
@@ -188,6 +194,7 @@ struct DashboardView: View {
         }
         viewModel.refreshSignals(profile: profiles.first)
         try? modelContext.save()
+        await viewModel.refreshWeeklyInsight(profile: profiles.first, ai: dependencies.onDeviceHealthAI)
         await viewModel.autoRunAssessmentIfNeeded(
             profile: profiles.first,
             orchestrator: dependencies.orchestrator,

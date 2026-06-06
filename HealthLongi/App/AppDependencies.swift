@@ -4,6 +4,7 @@ struct AppDependencies {
     var healthDataProvider: any HealthDataProviding
     var riskCalculator: any RiskCalculating
     var aiSummarizer: any AISummarizing
+    var onDeviceHealthAI: any OnDeviceHealthAIProviding
     var orchestrator: AssessmentOrchestrator
 
     static func live() -> AppDependencies {
@@ -19,6 +20,7 @@ struct AppDependencies {
             healthDataProvider: healthKit,
             riskCalculator: calculator,
             aiSummarizer: glm,
+            onDeviceHealthAI: OnDeviceHealthAIService(),
             orchestrator: orchestrator
         )
     }
@@ -36,6 +38,7 @@ struct AppDependencies {
             healthDataProvider: mockHealth,
             riskCalculator: calculator,
             aiSummarizer: glm,
+            onDeviceHealthAI: TemplateOnDeviceHealthAIService(),
             orchestrator: orchestrator
         )
     }
