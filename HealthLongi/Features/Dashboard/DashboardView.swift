@@ -109,6 +109,7 @@ struct DashboardView: View {
             BodyMapView(
                 profile: profile,
                 snapshot: viewModel.healthSnapshot ?? .empty,
+                signals: viewModel.healthSignals,
                 onSelectQuestionnaire: { activeQuestionnaire = $0 }
             )
 

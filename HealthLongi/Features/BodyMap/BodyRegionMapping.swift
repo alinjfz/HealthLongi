@@ -1,7 +1,16 @@
 import SwiftUI
 
 enum BodyRegionMapping {
-    static func color(for region: BodyRegion, profile: AbstractedRiskProfile, snapshot: WeeklyHealthSnapshot) -> Color {
+    static func color(
+        for region: BodyRegion,
+        profile: AbstractedRiskProfile,
+        snapshot: WeeklyHealthSnapshot,
+        signals: [HealthSignal] = []
+    ) -> Color {
+        if !signals.isEmpty {
+            return BodyMapSignalMapper.color(for: region, signals: signals)
+        }
+
         switch region {
         case .brain:
             return NHSTheme.mentalColor(for: profile.mentalHealth)
