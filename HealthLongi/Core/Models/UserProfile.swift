@@ -46,6 +46,7 @@ final class UserProfile {
     @Attribute(.externalStorage) private var labResultsData: Data?
     @Attribute(.externalStorage) private var labImportHistoryData: Data?
     @Attribute(.externalStorage) private var geneticsProfileData: Data?
+    @Attribute(.externalStorage) private var appointmentPrepData: Data?
 
     // MARK: - Date of Birth (computed from age)
 
@@ -117,6 +118,20 @@ final class UserProfile {
                 geneticsProfileData = try? JSONEncoder().encode(newValue)
             } else {
                 geneticsProfileData = nil
+            }
+        }
+    }
+
+    var appointmentPrep: AppointmentPrepContext? {
+        get {
+            guard let appointmentPrepData else { return nil }
+            return try? JSONDecoder().decode(AppointmentPrepContext.self, from: appointmentPrepData)
+        }
+        set {
+            if let newValue {
+                appointmentPrepData = try? JSONEncoder().encode(newValue)
+            } else {
+                appointmentPrepData = nil
             }
         }
     }

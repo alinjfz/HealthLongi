@@ -15,6 +15,13 @@ struct ProfileSummaryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let profile = profiles.first {
+                        NavigationLink {
+                            AppointmentPrepView(profile: profile)
+                        } label: {
+                            gpPrepCard
+                        }
+                        .buttonStyle(.plain)
+
                         ForEach(viewModel.groups) { group in
                             ProfileHealthSectionCard(group: group) { metric in
                                 handleMetricTap(metric)
@@ -63,6 +70,38 @@ struct ProfileSummaryView: View {
                 }
             }
         }
+    }
+
+    private var gpPrepCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(NHSTheme.lightBlue)
+                    .frame(width: 48, height: 48)
+                Image(systemName: "doc.text.fill")
+                    .font(.title3)
+                    .foregroundStyle(NHSTheme.primaryBlue)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Prepare for GP Visit")
+                    .font(.headline)
+                    .foregroundStyle(NHSTheme.textPrimary)
+                Text("Select concerns, preview a brief, and export a PDF")
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NHSTheme.textSecondary)
+        }
+        .padding()
+        .background(NHSTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
     }
 
     private var developerEntryTile: some View {
