@@ -27,8 +27,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             dashboardContent
-                .background(NHSTheme.background)
-                .navigationTitle("Dashboard")
+                .toolbar(.hidden, for: .navigationBar)
                 .onAppear {
                     viewModel = DashboardViewModel(healthDataProvider: dependencies.healthDataProvider)
                     viewModel.loadLatest(from: assessments)
@@ -77,7 +76,7 @@ struct DashboardView: View {
 
     private var dashboardContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 0) {
                 BodyMapView(
                     profile: profile,
                     snapshot: viewModel.healthSnapshot ?? .empty,
@@ -85,71 +84,78 @@ struct DashboardView: View {
                     userProfile: profiles.first
                 )
 
-                PersonalizedSummaryCard(
-                    quote: viewModel.motivationalQuote,
-                    profile: profile,
-                    summaryText: summaryText,
-                    usedFallback: viewModel.latestSummary?.usedFallback ?? viewModel.latestAssessment?.usedAIFallback ?? false,
-                    isUpdating: viewModel.isUpdatingAssessment,
-                    lastUpdated: viewModel.latestAssessment?.timestamp,
-                    tips: viewModel.selectedTips,
-                    completedTipIDs: viewModel.completedTipIDs,
-                    correlations: profile.correlations,
-                    watchItems: viewModel.latestSummary?.watchItems ?? [],
-                    preventiveActions: viewModel.latestSummary?.preventiveActions ?? [],
-                    onToggleTip: { viewModel.toggleTipCompletion($0) },
-                    onShowInfo: { showSummaryInfo = true }
-                )
+                VStack(alignment: .leading, spacing: 20) {
+                    PersonalizedSummaryCard(
+                        quote: viewModel.motivationalQuote,
+                        profile: profile,
+                        summaryText: summaryText,
+                        usedFallback: viewModel.latestSummary?.usedFallback ?? viewModel.latestAssessment?.usedAIFallback ?? false,
+                        isUpdating: viewModel.isUpdatingAssessment,
+                        lastUpdated: viewModel.latestAssessment?.timestamp,
+                        tips: viewModel.selectedTips,
+                        completedTipIDs: viewModel.completedTipIDs,
+                        correlations: profile.correlations,
+                        watchItems: viewModel.latestSummary?.watchItems ?? [],
+                        preventiveActions: viewModel.latestSummary?.preventiveActions ?? [],
+                        onToggleTip: { viewModel.toggleTipCompletion($0) },
+                        onShowInfo: { showSummaryInfo = true }
+                    )
 
-                if let lastRefreshed = viewModel.lastRefreshedAt {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock")
-                            .font(.caption2)
-                        Text("Health data synced \(lastRefreshed.formatted(.relative(presentation: .named)))")
-                            .font(.caption2)
+                    if let lastRefreshed = viewModel.lastRefreshedAt {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.caption2)
+                            Text("Health data synced \(lastRefreshed.formatted(.relative(presentation: .named)))")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(NHSTheme.textSecondary)
                     }
-                    .foregroundStyle(NHSTheme.textSecondary)
+
+                    DomainStatusCard(
+                        title: "Metabolic",
+                        subtitle: "Diabetes & weight risk",
+                        color: NHSTheme.riskColor(for: profile.metabolic),
+                        icon: "figure.walk",
+                        action: { selectedDomain = .metabolic }
+                    )
+
+                    DomainStatusCard(
+                        title: "Mental Health",
+                        subtitle: "Mood & anxiety indicators",
+                        color: NHSTheme.mentalColor(for: profile.mentalHealth),
+                        icon: "brain.head.profile",
+                        action: { selectedDomain = .mental }
+                    )
+
+                    DomainStatusCard(
+                        title: "Cardiovascular",
+                        subtitle: "Heart & circulation risk",
+                        color: NHSTheme.riskColor(for: profile.cardioRisk),
+                        icon: "heart.fill",
+                        action: { selectedDomain = .cardiovascular }
+                    )
+
+                    TrendsCard()
+
+                    NHSResourcesCard(
+                        profile: profile,
+                        suggestedLinkKeys: viewModel.latestSummary?.suggestedLinkKeys ?? []
+                    )
+
+                    if let error = viewModel.errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .nhsCard()
+                    }
                 }
-
-                DomainStatusCard(
-                    title: "Metabolic",
-                    subtitle: "Diabetes & weight risk",
-                    color: NHSTheme.riskColor(for: profile.metabolic),
-                    icon: "figure.walk",
-                    action: { selectedDomain = .metabolic }
-                )
-
-                DomainStatusCard(
-                    title: "Mental Health",
-                    subtitle: "Mood & anxiety indicators",
-                    color: NHSTheme.mentalColor(for: profile.mentalHealth),
-                    icon: "brain.head.profile",
-                    action: { selectedDomain = .mental }
-                )
-
-                DomainStatusCard(
-                    title: "Cardiovascular",
-                    subtitle: "Heart & circulation risk",
-                    color: NHSTheme.riskColor(for: profile.cardioRisk),
-                    icon: "heart.fill",
-                    action: { selectedDomain = .cardiovascular }
-                )
-
-                TrendsCard()
-
-                NHSResourcesCard(
-                    profile: profile,
-                    suggestedLinkKeys: viewModel.latestSummary?.suggestedLinkKeys ?? []
-                )
-
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .nhsCard()
-                }
+                .padding()
             }
-            .padding()
+        }
+        .scrollContentBackground(.hidden)
+        .background {
+            BodyMapHeroBackground()
+                .ignoresSafeArea()
         }
         .refreshable {
             await runAssessmentIfNeeded(reason: .userRefresh)

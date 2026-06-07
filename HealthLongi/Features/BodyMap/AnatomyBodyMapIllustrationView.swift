@@ -1,72 +1,7 @@
 import SwiftUI
 
-struct AnatomyBodyMapIllustrationView: View {
-    let regionColors: [BodyRegion: Color]
-    let selectedRegion: BodyRegion?
-    var onRegionTapped: (BodyRegion) -> Void
-
+struct BodyMapHeroBackground: View {
     var body: some View {
-        GeometryReader { proxy in
-            let size = proxy.size
-
-            ZStack {
-                background
-
-                Group {
-                    AnatomySilhouette()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.18, green: 0.30, blue: 0.45).opacity(0.86),
-                                    Color(red: 0.07, green: 0.12, blue: 0.20).opacity(0.96)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .overlay(AnatomySilhouette().stroke(Color(red: 0.58, green: 0.78, blue: 1.0).opacity(0.55), lineWidth: 1.5))
-                        .overlay(AnatomySilhouette().stroke(.white.opacity(0.22), lineWidth: 0.6).blur(radius: 2))
-                        .shadow(color: Color(red: 0.26, green: 0.55, blue: 1.0).opacity(0.5), radius: 18)
-                        .shadow(color: .black.opacity(0.55), radius: 22, y: 14)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-
-                    VascularLines()
-                        .stroke(Color(red: 0.93, green: 0.16, blue: 0.22).opacity(0.50), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-
-                    VascularLines()
-                        .stroke(Color(red: 0.20, green: 0.62, blue: 1.0).opacity(0.32), style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
-                        .offset(x: 7)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-
-                    SkeletonLines()
-                        .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, lineCap: .round))
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-
-                    organs
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                }
-                .scaleEffect(1.04)
-
-                hotspotMarkers(in: size)
-
-                touchTargets(in: size)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.14), lineWidth: 1)
-            )
-            .accessibilityElement(children: .contain)
-        }
-    }
-
-    private var background: some View {
         ZStack {
             LinearGradient(
                 colors: [
@@ -86,6 +21,63 @@ struct AnatomyBodyMapIllustrationView: View {
                 startRadius: 20,
                 endRadius: 220
             )
+        }
+    }
+}
+
+struct AnatomyBodyMapIllustrationView: View {
+    let regionColors: [BodyRegion: Color]
+    let selectedRegion: BodyRegion?
+    var onRegionTapped: (BodyRegion) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+
+            ZStack {
+                BodyMapHeroBackground()
+
+                Group {
+                    AnatomySilhouette()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.18, green: 0.30, blue: 0.45).opacity(0.86),
+                                    Color(red: 0.07, green: 0.12, blue: 0.20).opacity(0.96)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay(AnatomySilhouette().stroke(Color(red: 0.58, green: 0.78, blue: 1.0).opacity(0.55), lineWidth: 1.5))
+                        .overlay(AnatomySilhouette().stroke(.white.opacity(0.22), lineWidth: 0.6).blur(radius: 2))
+                        .shadow(color: Color(red: 0.26, green: 0.55, blue: 1.0).opacity(0.5), radius: 18)
+                        .shadow(color: .black.opacity(0.55), radius: 22, y: 14)
+                        .padding(.vertical, 14)
+
+                    VascularLines()
+                        .stroke(Color(red: 0.93, green: 0.16, blue: 0.22).opacity(0.50), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+                        .padding(.vertical, 14)
+
+                    VascularLines()
+                        .stroke(Color(red: 0.20, green: 0.62, blue: 1.0).opacity(0.32), style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
+                        .offset(x: 7)
+                        .padding(.vertical, 14)
+
+                    SkeletonLines()
+                        .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+                        .padding(.vertical, 14)
+
+                    organs
+                        .padding(.vertical, 14)
+                }
+                .scaleEffect(1.0)
+
+                hotspotMarkers(in: size)
+
+                touchTargets(in: size)
+            }
+            .accessibilityElement(children: .contain)
         }
     }
 

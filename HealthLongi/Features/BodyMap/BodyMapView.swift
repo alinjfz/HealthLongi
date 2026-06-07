@@ -25,7 +25,8 @@ struct BodyMapView: View {
                 activeSheet = .region(region)
             }
         }
-        .frame(height: 560)
+        .safeAreaPadding(.top, 12)
+        .aspectRatio(300 / 520, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
