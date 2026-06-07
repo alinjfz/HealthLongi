@@ -143,7 +143,12 @@ extension URL: @retroactive Identifiable {
         summary: AISummaryResult(
             markdownSummary: "## Summary\nYour assessment suggests elevated anxiety alongside reduced activity.",
             suggestedLinkKeys: ["nhs_talking_therapies"],
-            usedFallback: true
+            usedFallback: true,
+            watchItems: [],
+            preventiveActions: [],
+            nhsReferences: [],
+            overallStatus: .watch,
+            gpDiscussionRecommended: false
         )
     )
 }

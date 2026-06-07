@@ -44,7 +44,16 @@ final class AssessmentOrchestrator {
         )
 
         let scoring = riskCalculator.calculate(input: input)
-        let summary = try await aiSummarizer.summarize(profile: scoring.profile)
+        let priorAssessment = fetchLatestAssessment(modelContext: modelContext)
+        let trends = await fetchTrendDigest()
+        let context = AIHealthContextBuilder.build(
+            profile: profile,
+            snapshot: snapshot,
+            trends: trends,
+            scoring: scoring,
+            priorAssessment: priorAssessment
+        )
+        let summary = try await aiSummarizer.summarize(context: context)
 
         let assessment = RiskAssessment(
             profile: scoring.profile,
@@ -53,7 +62,8 @@ final class AssessmentOrchestrator {
             gad7Score: scoring.gad7Score,
             metabolicScore: scoring.metabolicScore,
             cardioScore: scoring.cardioScore,
-            usedAIFallback: summary.usedFallback
+            usedAIFallback: summary.usedFallback,
+            aiInsightJSON: AIInsightCodec.encode(summary)
         )
 
         modelContext.insert(assessment)
@@ -76,5 +86,24 @@ final class AssessmentOrchestrator {
         } catch {
             return MockHealthDataProvider().snapshot
         }
+    }
+
+    private func fetchTrendDigest() async -> TrendDigest {
+        let metrics: [HealthKitMetric] = [.steps, .sleep, .restingHeartRate]
+        var series: [HealthKitMetric: [DailyDataPoint]] = [:]
+        for metric in metrics {
+            if let points = try? await healthDataProvider.fetchDailySeries(for: metric, days: 30) {
+                series[metric] = points
+            }
+        }
+        return TrendDigestBuilder.build(from: series)
+    }
+
+    private func fetchLatestAssessment(modelContext: ModelContext) -> RiskAssessment? {
+        var descriptor = FetchDescriptor<RiskAssessment>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 }

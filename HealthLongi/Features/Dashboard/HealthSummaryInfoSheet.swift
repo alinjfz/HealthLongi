@@ -25,6 +25,9 @@ struct HealthSummaryInfoSheet: View {
                     if profile.labSignals.hasAnySignal {
                         labSignalsSection
                     }
+                    if let refs = summaryResult?.nhsReferences, !refs.isEmpty {
+                        nhsReferencesSection(refs)
+                    }
                     generationSection
                     limitationsSection
                     privacySection
@@ -113,7 +116,7 @@ struct HealthSummaryInfoSheet: View {
                     color: NHSTheme.riskColor(for: profile.metabolic),
                     score: assessment?.metabolicScore)
 
-            Text("Scores are calculated on your device using simplified versions of clinical tools (QRISK3 subset, FINDRISC subset, PHQ-9, and GAD-7). Lab results contribute as anonymised flags — never raw values.")
+            Text("Scores are calculated on your device using simplified versions of clinical tools (QRISK3 subset, FINDRISC subset, PHQ-9, and GAD-7). Lab values are used for scoring and AI context but are not linked to your identity.")
                 .font(.caption)
                 .foregroundStyle(NHSTheme.textSecondary)
         }
@@ -146,7 +149,7 @@ struct HealthSummaryInfoSheet: View {
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
 
-            Text("Your saved lab results were converted to high-level flags for scoring. Raw values are never sent to AI.")
+            Text("Lab values are used for on-device scoring and sent to AI as anonymised metrics (no name or NHS number). On-device flags below summarise what influenced your risk levels.")
                 .font(.caption)
                 .foregroundStyle(NHSTheme.textSecondary)
 
@@ -159,24 +162,56 @@ struct HealthSummaryInfoSheet: View {
         .nhsCard()
     }
 
+    private func nhsReferencesSection(_ references: [AINHSReference]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("NHS Guidance Cited")
+                .font(.headline)
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            Text("Every recommendation in your summary must map to one of these curated NHS topics. Unreferenced advice is filtered out.")
+                .font(.caption)
+                .foregroundStyle(NHSTheme.textSecondary)
+
+            ForEach(references) { ref in
+                if let topic = NHSKnowledgeBase.topic(id: ref.topicId) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Link(destination: topic.url) {
+                            Text(topic.title)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(NHSTheme.primaryBlue)
+                        }
+                        Text(ref.whyRelevant)
+                            .font(.caption)
+                            .foregroundStyle(NHSTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .nhsCard()
+    }
+
     private var generationSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("How the Summary Was Written")
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
 
-            Text("1. Your device combines questionnaires, Apple Health metrics, demographics, and lab flags into risk levels.")
+            Text("1. On-device rules score cardiovascular, metabolic, and mental health from your questionnaires, Apple Health metrics, demographics, and lab results.")
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
-            Text("2. Only anonymised risk levels and pattern flags are sent to the AI — no raw HealthKit, lab, or genetics data.")
+            Text("2. Relevant NHS patient guidance excerpts are selected and sent with your health metrics (no name or contact details).")
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
-            Text("3. The AI writes a brief, plain-English summary with one practical suggestion.")
+            Text("3. The AI analyses your full picture and returns structured findings — each must cite an NHS topic ID from that list.")
+                .font(.subheadline)
+                .foregroundStyle(NHSTheme.textSecondary)
+            Text("4. Your device validates every NHS reference before showing it. Crisis routing (e.g. NHS 111) still uses on-device safety rules.")
                 .font(.subheadline)
                 .foregroundStyle(NHSTheme.textSecondary)
 
             if usedFallback {
-                Label("AI was unavailable, so a built-in offline summary was used instead.", systemImage: "wifi.slash")
+                Label("AI was unavailable, so an NHS-grounded offline summary was used instead.", systemImage: "wifi.slash")
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
@@ -203,10 +238,10 @@ struct HealthSummaryInfoSheet: View {
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
 
-            Label("HealthKit data stays on your device", systemImage: "heart.text.square.fill")
-            Label("Lab results stay on your device", systemImage: "flask.fill")
+            Label("HealthKit and lab data stay on your device", systemImage: "heart.text.square.fill")
+            Label("No name, email, or NHS number is sent to AI", systemImage: "person.crop.circle.badge.xmark")
             Label("Genetics data is never sent to AI", systemImage: "leaf.fill")
-            Label("Only anonymised risk levels may leave your device", systemImage: "lock.shield")
+            Label("Health metrics and NHS excerpts may leave your device for AI analysis", systemImage: "lock.shield")
         }
         .font(.subheadline)
         .foregroundStyle(NHSTheme.textSecondary)

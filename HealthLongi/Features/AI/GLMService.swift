@@ -8,7 +8,7 @@ struct GLMService: AISummarizing {
         service = ChatCompletionAIService(configuration: .glm(apiKey: apiKey), session: session)
     }
 
-    func summarize(profile: AbstractedRiskProfile) async throws -> AISummaryResult {
-        try await service.summarize(profile: profile)
+    func summarize(context: AIHealthContext) async throws -> AISummaryResult {
+        try await service.summarize(context: context)
     }
 }

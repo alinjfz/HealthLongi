@@ -10,6 +10,7 @@ final class RiskAssessment {
     var correlationsJSON: String
     var labSignalsJSON: String?
     var aiSummaryText: String
+    var aiInsightJSON: String?
     var phq9Score: Int
     var gad7Score: Int
     var metabolicScore: Int
@@ -24,7 +25,8 @@ final class RiskAssessment {
         gad7Score: Int,
         metabolicScore: Int,
         cardioScore: Int,
-        usedAIFallback: Bool = false
+        usedAIFallback: Bool = false,
+        aiInsightJSON: String? = nil
     ) {
         self.timestamp = timestamp
         self.cardioRiskRaw = profile.cardioRisk.rawValue
@@ -39,11 +41,16 @@ final class RiskAssessment {
             encoding: .utf8
         )
         self.aiSummaryText = aiSummaryText
+        self.aiInsightJSON = aiInsightJSON
         self.phq9Score = phq9Score
         self.gad7Score = gad7Score
         self.metabolicScore = metabolicScore
         self.cardioScore = cardioScore
         self.usedAIFallback = usedAIFallback
+    }
+
+    var aiInsight: AISummaryResult? {
+        AIInsightCodec.decode(from: aiInsightJSON)
     }
 
     var abstractedProfile: AbstractedRiskProfile {

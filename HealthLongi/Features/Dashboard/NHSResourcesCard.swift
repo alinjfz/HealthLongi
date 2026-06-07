@@ -2,9 +2,14 @@ import SwiftUI
 
 struct NHSResourcesCard: View {
     let profile: AbstractedRiskProfile
+    var suggestedLinkKeys: [String] = []
 
     private var links: [NHSLink] {
-        Array(NHSLinks.links(for: profile).prefix(3))
+        let curated = NHSKnowledgeBase.links(forTopicIDs: suggestedLinkKeys)
+        if !curated.isEmpty {
+            return Array(curated.prefix(5))
+        }
+        return Array(NHSLinks.links(for: profile).prefix(3))
     }
 
     var body: some View {
@@ -12,6 +17,12 @@ struct NHSResourcesCard: View {
             Label("NHS Resources", systemImage: "cross.case.fill")
                 .font(.headline)
                 .foregroundStyle(NHSTheme.primaryBlue)
+
+            if !suggestedLinkKeys.isEmpty {
+                Text("Selected from NHS guidance cited in your summary.")
+                    .font(.caption)
+                    .foregroundStyle(NHSTheme.textSecondary)
+            }
 
             if links.isEmpty {
                 Text("Complete an assessment to see personalised NHS resources.")

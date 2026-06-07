@@ -33,10 +33,15 @@ final class DashboardViewModel {
 
         if let assessment = latestAssessment {
             let summarySource = sorted.first(where: { !$0.usedAIFallback }) ?? assessment
-            let loadedSummary = AISummaryResult(
+            let loadedSummary = summarySource.aiInsight ?? AISummaryResult(
                 markdownSummary: summarySource.aiSummaryText,
                 suggestedLinkKeys: NHSLinks.links(for: summarySource.abstractedProfile).map(\.id),
-                usedFallback: summarySource.usedAIFallback
+                usedFallback: summarySource.usedAIFallback,
+                watchItems: [],
+                preventiveActions: [],
+                nhsReferences: [],
+                overallStatus: nil,
+                gpDiscussionRecommended: false
             )
 
             if preferExistingSummary,
@@ -190,8 +195,13 @@ final class DashboardViewModel {
 
         return AISummaryResult(
             markdownSummary: previous.markdownSummary,
-            suggestedLinkKeys: NHSLinks.links(for: result.assessment.abstractedProfile).map(\.id),
-            usedFallback: false
+            suggestedLinkKeys: previous.suggestedLinkKeys,
+            usedFallback: false,
+            watchItems: previous.watchItems,
+            preventiveActions: previous.preventiveActions,
+            nhsReferences: previous.nhsReferences,
+            overallStatus: previous.overallStatus,
+            gpDiscussionRecommended: previous.gpDiscussionRecommended
         )
     }
 }

@@ -126,6 +126,8 @@ struct DashboardView: View {
                 tips: viewModel.selectedTips,
                 completedTipIDs: viewModel.completedTipIDs,
                 correlations: profile.correlations,
+                watchItems: viewModel.latestSummary?.watchItems ?? [],
+                preventiveActions: viewModel.latestSummary?.preventiveActions ?? [],
                 onToggleTip: { viewModel.toggleTipCompletion($0) },
                 onShowInfo: { showSummaryInfo = true }
             )
@@ -170,7 +172,10 @@ struct DashboardView: View {
                 action: { selectedDomain = .metabolic }
             )
 
-            NHSResourcesCard(profile: profile)
+            NHSResourcesCard(
+                profile: profile,
+                suggestedLinkKeys: viewModel.latestSummary?.suggestedLinkKeys ?? []
+            )
 
             if let error = viewModel.errorMessage {
                 Text(error)

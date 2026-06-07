@@ -1,5 +1,5 @@
 import Foundation
 
 protocol AISummarizing: Sendable {
-    func summarize(profile: AbstractedRiskProfile) async throws -> AISummaryResult
+    func summarize(context: AIHealthContext) async throws -> AISummaryResult
 }

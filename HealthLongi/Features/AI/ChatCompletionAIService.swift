@@ -54,20 +54,19 @@ struct ChatCompletionAIService: AISummarizing {
     var debugConfiguration: Configuration { configuration }
     #endif
 
-    func summarize(profile: AbstractedRiskProfile) async throws -> AISummaryResult {
+    func summarize(context: AIHealthContext) async throws -> AISummaryResult {
         guard let apiKey = configuration.apiKey, !apiKey.isEmpty else {
             AIDebugLogger.logFallback(reason: "API key missing or still a placeholder in Secrets.xcconfig")
-            return fallbackResult(for: profile)
+            return NHSGroundedFallback.make(context: context)
         }
+
+        let allowedIDs = Set(context.nhsTopics.map(\.id))
 
         for attempt in 1...3 {
             do {
-                let markdown = try await requestSummary(profile: profile, apiKey: apiKey, attempt: attempt)
-                return AISummaryResult(
-                    markdownSummary: markdown,
-                    suggestedLinkKeys: NHSLinks.links(for: profile).map(\.id),
-                    usedFallback: false
-                )
+                let content = try await requestInsight(context: context, apiKey: apiKey, attempt: attempt)
+                let raw = AIResponseParser.parse(content: content, allowedTopicIDs: allowedIDs)
+                return AIResponseParser.makeResult(from: raw, context: context, usedFallback: false)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -77,18 +76,18 @@ struct ChatCompletionAIService: AISummarizing {
                     continue
                 }
                 AIDebugLogger.logFallback(reason: "all 3 attempts failed — \(error)")
-                return fallbackResult(for: profile)
+                return NHSGroundedFallback.make(context: context)
             }
         }
 
         AIDebugLogger.logFallback(reason: "exhausted retries")
-        return fallbackResult(for: profile)
+        return NHSGroundedFallback.make(context: context)
     }
 
-    private func requestSummary(profile: AbstractedRiskProfile, apiKey: String, attempt: Int) async throws -> String {
+    private func requestInsight(context: AIHealthContext, apiKey: String, attempt: Int) async throws -> String {
         var request = URLRequest(url: configuration.endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = 20
+        request.timeoutInterval = 45
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("en-US,en", forHTTPHeaderField: "Accept-Language")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -100,14 +99,15 @@ struct ChatCompletionAIService: AISummarizing {
             request.setValue(appTitle, forHTTPHeaderField: "X-Title")
         }
 
+        let userPrompt = AISummaryPrompts.userPrompt(for: context)
         var body: [String: Any] = [
             "model": configuration.model,
             "messages": [
-                ["role": "system", "content": GLMPrompts.systemPrompt],
-                ["role": "user", "content": GLMPrompts.userPrompt(for: profile)]
+                ["role": "system", "content": AISummaryPrompts.systemPrompt],
+                ["role": "user", "content": userPrompt]
             ],
-            "temperature": 0.75,
-            "max_tokens": 180
+            "temperature": 0.4,
+            "max_tokens": 1000
         ]
 
         if configuration.disableGLMThinking {
@@ -127,7 +127,6 @@ struct ChatCompletionAIService: AISummarizing {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let userPrompt = GLMPrompts.userPrompt(for: profile)
         AIDebugLogger.logRequest(
             attempt: attempt,
             model: configuration.model,
@@ -159,14 +158,6 @@ struct ChatCompletionAIService: AISummarizing {
             return content
         }
         throw ChatCompletionError.emptyResponse
-    }
-
-    private func fallbackResult(for profile: AbstractedRiskProfile) -> AISummaryResult {
-        AISummaryResult(
-            markdownSummary: GLMPrompts.fallbackText(for: profile),
-            suggestedLinkKeys: NHSLinks.links(for: profile).map(\.id),
-            usedFallback: true
-        )
     }
 }
 

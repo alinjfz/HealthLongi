@@ -10,47 +10,75 @@ struct PersonalizedSummaryCard: View {
     let tips: [HealthTip]
     let completedTipIDs: Set<String>
     let correlations: [String]
+    let watchItems: [AIWatchItem]
+    let preventiveActions: [AIPreventiveAction]
     let onToggleTip: (String) -> Void
     let onShowInfo: () -> Void
 
-    @State private var isTipsExpanded = false
-    @State private var isSummaryExpanded = false
+    @State private var isDetailsExpanded = false
+
+    private var hasExpandableDetails: Bool {
+        !correlations.isEmpty
+            || !watchItems.isEmpty
+            || !preventiveActions.isEmpty
+            || !tips.isEmpty
+            || (summaryText.map { MarkdownSummaryText.hasMoreContent($0) } ?? false)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             headerRow
-
             riskBadges
-
-            if !correlations.isEmpty {
-                correlationsRow
-            }
-
             summaryContent
 
-            if !tips.isEmpty {
-                Button(isTipsExpanded ? "Show Less" : "Show Tips") {
+            if isDetailsExpanded {
+                detailsContent
+            }
+
+            if hasExpandableDetails && !isUpdating {
+                Button(isDetailsExpanded ? "Show Less" : "Show More") {
                     withAnimation(.spring(duration: 0.35)) {
-                        isTipsExpanded.toggle()
+                        isDetailsExpanded.toggle()
                     }
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(NHSTheme.primaryBlue)
-
-                if isTipsExpanded {
-                    ForEach(tips) { tip in
-                        GamifiedIcon(
-                            tip: tip,
-                            isCompleted: completedTipIDs.contains(tip.id),
-                            onToggle: { onToggleTip(tip.id) }
-                        )
-                    }
-                }
             }
         }
         .nhsCard()
         .onChange(of: summaryText) {
-            isSummaryExpanded = false
+            isDetailsExpanded = false
+        }
+    }
+
+    @ViewBuilder
+    private var detailsContent: some View {
+        if !correlations.isEmpty {
+            correlationsRow
+        }
+
+        if !watchItems.isEmpty {
+            watchListSection
+        }
+
+        if !preventiveActions.isEmpty {
+            preventiveActionsSection
+        }
+
+        if !tips.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Tips for you")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NHSTheme.primaryBlue)
+
+                ForEach(tips) { tip in
+                    GamifiedIcon(
+                        tip: tip,
+                        isCompleted: completedTipIDs.contains(tip.id),
+                        onToggle: { onToggleTip(tip.id) }
+                    )
+                }
+            }
         }
     }
 
@@ -87,6 +115,63 @@ struct PersonalizedSummaryCard: View {
                 .accessibilityLabel("About this health summary")
             }
         }
+    }
+
+    private var watchListSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Watch this week")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            ForEach(watchItems) { item in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.finding)
+                        .font(.subheadline)
+                        .foregroundStyle(NHSTheme.textPrimary)
+                    if let topic = NHSKnowledgeBase.topic(id: item.nhsTopicId) {
+                        Link(destination: topic.url) {
+                            Label(topic.title, systemImage: "link")
+                                .font(.caption)
+                                .foregroundStyle(NHSTheme.primaryBlue)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
+        .background(NHSTheme.lightBlue.opacity(0.35))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var preventiveActionsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("NHS-aligned steps")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NHSTheme.primaryBlue)
+
+            ForEach(preventiveActions) { action in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(action.action)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(NHSTheme.textPrimary)
+                    Text(action.rationale)
+                        .font(.caption)
+                        .foregroundStyle(NHSTheme.textSecondary)
+                    if let topic = NHSKnowledgeBase.topic(id: action.nhsTopicId) {
+                        Link(destination: topic.url) {
+                            Label("NHS: \(topic.title)", systemImage: "arrow.up.right")
+                                .font(.caption2)
+                                .foregroundStyle(NHSTheme.primaryBlue)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
+        .background(NHSTheme.lightBlue.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var correlationsRow: some View {
@@ -149,13 +234,13 @@ struct PersonalizedSummaryCard: View {
 
                     MarkdownSummaryText(
                         content: summaryText,
-                        isExpanded: isSummaryExpanded
+                        isExpanded: false
                     )
                     .opacity(0.55)
                 }
             }
         } else if let summaryText, !summaryText.isEmpty {
-            if usedFallback {
+            if usedFallback && isDetailsExpanded {
                 Label("Offline summary — AI insights unavailable", systemImage: "wifi.slash")
                     .font(.caption)
                     .foregroundStyle(.orange)
@@ -163,18 +248,8 @@ struct PersonalizedSummaryCard: View {
 
             MarkdownSummaryText(
                 content: summaryText,
-                isExpanded: isSummaryExpanded
+                isExpanded: isDetailsExpanded
             )
-
-            if MarkdownSummaryText.hasMoreContent(summaryText) {
-                Button(isSummaryExpanded ? "Show Less" : "Full Summary") {
-                    withAnimation(.spring(duration: 0.35)) {
-                        isSummaryExpanded.toggle()
-                    }
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(NHSTheme.primaryBlue)
-            }
         } else {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: quote.category.icon)
