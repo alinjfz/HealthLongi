@@ -1,6 +1,37 @@
 import SwiftUI
 
 enum BodyRegionMapping {
+    /// Per-organ health colour — each organ uses its own signals where available.
+    static func color(
+        for organ: AnatomyOrganID,
+        profile: AbstractedRiskProfile,
+        snapshot: WeeklyHealthSnapshot,
+        labResults: LabResults? = nil
+    ) -> (color: Color, opacity: Double) {
+        switch organ {
+        case .brain:
+            let c = color(for: BodyRegion.brain, profile: profile, snapshot: snapshot, labResults: labResults)
+            return (c, hasBrainSignal(profile: profile, labs: labResults) ? 0.82 : 0.40)
+        case .lungs:
+            let c = color(for: BodyRegion.lungs, profile: profile, snapshot: snapshot, labResults: labResults)
+            return (c, hasLungSignal(profile: profile, snapshot: snapshot, labs: labResults) ? 0.82 : 0.40)
+        case .heart:
+            let c = color(for: BodyRegion.heart, profile: profile, snapshot: snapshot, labResults: labResults)
+            return (c, hasHeartSignal(profile: profile, snapshot: snapshot, labs: labResults) ? 0.82 : 0.40)
+        case .liver:
+            return liverColor(profile: profile, labs: labResults)
+        case .stomach:
+            let c = NHSTheme.riskColor(for: profile.metabolic)
+            return (c, profile.metabolic != .low || labResults?.hasAnyValue == true ? 0.78 : 0.38)
+        case .intestines:
+            return intestinesColor(profile: profile, labs: labResults)
+        case .kidneys:
+            return kidneysColor(labs: labResults)
+        case .bladder:
+            return (organ.restingTint, 0.32)
+        }
+    }
+
     static func color(
         for region: BodyRegion,
         profile: AbstractedRiskProfile,
@@ -152,6 +183,59 @@ enum BodyRegionMapping {
         if let ft4, ft4 < 9 || ft4 > 24 { return .moderate }
         guard tsh != nil || ft4 != nil else { return nil }
         return .low
+    }
+
+    private static func liverColor(profile: AbstractedRiskProfile, labs: LabResults?) -> (Color, Double) {
+        let labRisks = [
+            highMarkerRisk(labs?.alt, moderateAbove: 45, highAbove: 100),
+            highMarkerRisk(labs?.ast, moderateAbove: 40, highAbove: 100),
+            highMarkerRisk(labs?.triglycerides, moderateAbove: 1.7, highAbove: 5.6)
+        ]
+        if let labRisk = strongestRisk(labRisks) {
+            return (NHSTheme.riskColor(for: strongestRisk(profile.metabolic, labRisk)), 0.85)
+        }
+        if profile.metabolic != .low {
+            return (NHSTheme.riskColor(for: profile.metabolic), 0.78)
+        }
+        return (AnatomyOrganID.liver.restingTint, 0.38)
+    }
+
+    private static func intestinesColor(profile: AbstractedRiskProfile, labs: LabResults?) -> (Color, Double) {
+        let labRisks = [
+            highMarkerRisk(labs?.hba1c, moderateAbove: 42, highAbove: 48),
+            highMarkerRisk(labs?.bloodSugar, moderateAbove: 7.8, highAbove: 11.1),
+            highMarkerRisk(labs?.triglycerides, moderateAbove: 1.7, highAbove: 5.6)
+        ]
+        if let labRisk = strongestRisk(labRisks) {
+            return (NHSTheme.riskColor(for: strongestRisk(profile.metabolic, labRisk)), 0.85)
+        }
+        if profile.metabolic != .low {
+            return (NHSTheme.riskColor(for: profile.metabolic), 0.78)
+        }
+        return (AnatomyOrganID.intestines.restingTint, 0.38)
+    }
+
+    private static func kidneysColor(labs: LabResults?) -> (Color, Double) {
+        guard let egfr = labs?.egfr, let risk = kidneyRisk(egfr: egfr) else {
+            return (AnatomyOrganID.kidneys.restingTint, 0.35)
+        }
+        return (NHSTheme.riskColor(for: risk), 0.85)
+    }
+
+    private static func hasBrainSignal(profile: AbstractedRiskProfile, labs: LabResults?) -> Bool {
+        profile.mentalHealth != .none && profile.mentalHealth != .mild
+            || labs?.tsh != nil || labs?.vitaminD != nil || labs?.vitaminB12 != nil
+    }
+
+    private static func hasLungSignal(profile: AbstractedRiskProfile, snapshot: WeeklyHealthSnapshot, labs: LabResults?) -> Bool {
+        snapshot.oxygenSaturation != nil || labs?.crp != nil || labs?.esr != nil
+            || profile.cardioRisk != .low
+    }
+
+    private static func hasHeartSignal(profile: AbstractedRiskProfile, snapshot: WeeklyHealthSnapshot, labs: LabResults?) -> Bool {
+        profile.cardioRisk != .low
+            || snapshot.averageRestingHeartRate != nil
+            || labs?.ldlCholesterol != nil || labs?.bloodPressureSystolic != nil
     }
 }
 

@@ -16,17 +16,20 @@ struct BodyMapView: View {
         })
     }
 
+    private var organStyles: [AnatomyOrganID: (color: Color, opacity: Double)] {
+        Dictionary(uniqueKeysWithValues: AnatomyOrganID.allCases.map { organ in
+            (organ, BodyRegionMapping.color(for: organ, profile: profile, snapshot: snapshot, labResults: labResults))
+        })
+    }
+
     var body: some View {
         AnatomyBodyMapIllustrationView(
             regionColors: regionColors,
-            selectedRegion: activeSheet?.selectedRegion
+            organStyles: organStyles
         ) { region in
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-                activeSheet = .region(region)
-            }
+            activeSheet = .region(region)
         }
         .safeAreaPadding(.top, 12)
-        .aspectRatio(300 / 520, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
