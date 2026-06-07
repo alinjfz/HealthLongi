@@ -9,16 +9,16 @@ struct AppDependencies {
     static func live() -> AppDependencies {
         let healthKit = HealthKitManager()
         let calculator = RiskCalculator()
-        let glm = GLMService()
+        let aiSummarizer = AISummaryServiceFactory.make()
         let orchestrator = AssessmentOrchestrator(
             healthDataProvider: healthKit,
             riskCalculator: calculator,
-            aiSummarizer: glm
+            aiSummarizer: aiSummarizer
         )
         return AppDependencies(
             healthDataProvider: healthKit,
             riskCalculator: calculator,
-            aiSummarizer: glm,
+            aiSummarizer: aiSummarizer,
             orchestrator: orchestrator
         )
     }
@@ -26,16 +26,16 @@ struct AppDependencies {
     static func preview() -> AppDependencies {
         let mockHealth = MockHealthDataProvider()
         let calculator = RiskCalculator()
-        let glm = GLMService(apiKey: nil)
+        let aiSummarizer = ChatCompletionAIService(configuration: .glm(apiKey: nil))
         let orchestrator = AssessmentOrchestrator(
             healthDataProvider: mockHealth,
             riskCalculator: calculator,
-            aiSummarizer: glm
+            aiSummarizer: aiSummarizer
         )
         return AppDependencies(
             healthDataProvider: mockHealth,
             riskCalculator: calculator,
-            aiSummarizer: glm,
+            aiSummarizer: aiSummarizer,
             orchestrator: orchestrator
         )
     }

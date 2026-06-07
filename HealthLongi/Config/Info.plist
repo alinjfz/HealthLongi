@@ -4,5 +4,7 @@
 <dict>
 	<key>GLM_API_KEY</key>
 	<string>$(GLM_API_KEY)</string>
+	<key>OPENROUTER_API_KEY</key>
+	<string>$(OPENROUTER_API_KEY)</string>
 </dict>
 </plist>
