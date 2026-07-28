@@ -2,6 +2,8 @@
 
 **Vitals & Mind** - iOS health risk assessment app using HealthKit data and AI analysis.
 
+> **Z.ai Prize winner** — built for the [AI Engineer London hackathon](https://luma.com/9ef4463s).
+
 ## Overview
 
 Vitals & Mind is a privacy-focused iOS app that reads health data from Apple Health (steps, heart rate, sleep) and combines it with mental health assessments to calculate comprehensive health risk profiles. All data processing happens on-device, with raw health data never leaving the device.
